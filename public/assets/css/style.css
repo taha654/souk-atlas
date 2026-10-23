@@ -332,3 +332,41 @@ h2 { font-size: 1.35rem; }
 .filtres-statut a[aria-current="page"] { font-weight: 700; text-decoration: none; color: var(--texte); }
 textarea { width: 100%; padding: 0.6rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; }
 .champ select { padding: 0.5rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; background: #fff; max-width: 100%; }
+
+/* =============================================================================
+   Étape 6 : annonces, messagerie
+   ============================================================================= */
+.sous-texte-gauche { color: var(--texte-doux); margin-top: 0; }
+.filtres-annonces { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 1rem; align-items: end; }
+.filtres-annonces input, .filtres-annonces select { width: 100%; padding: 0.5rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; background: #fff; }
+.filtres-annonces .champ { margin-bottom: 0.75rem; }
+.ligne-annonce { display: flex; gap: 1rem; align-items: flex-start; }
+.ligne-annonce img { border-radius: 6px; flex: none; object-fit: cover; }
+.ligne-annonce p { margin: 0 0 0.4rem; }
+.statut--en_ligne { background: #e6f4ea; color: var(--succes); }
+.statut--en_moderation { background: #fff4d6; color: #7a5300; }
+.statut--refusee, .statut--expiree { background: #fbe9e7; color: var(--erreur); }
+.statut--vendue { background: var(--bleu-clair); color: var(--bleu); }
+.carte-produit--inactive .carte-produit__lien { opacity: 0.7; }
+.signalement { margin-top: 1rem; }
+.signalement summary { cursor: pointer; color: var(--texte-doux); }
+
+/* Menu déroulant de l'en-tête (<details>) : sans JavaScript */
+.menu-deroulant { position: relative; }
+.menu-deroulant summary { cursor: pointer; text-decoration: underline; }
+.menu-deroulant ul { position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 30; list-style: none; margin: 0; padding: 0.5rem 0;
+    background: #fff; border: 1px solid var(--bordure); border-radius: var(--rayon); box-shadow: var(--ombre); min-width: 12rem; }
+.menu-deroulant ul a { display: block; padding: 0.4rem 1rem; color: var(--texte); white-space: nowrap; }
+
+/* Messagerie */
+.liste-conversations { list-style: none; padding: 0; }
+.liste-conversations p { margin: 0.25rem 0 0; }
+.conversation--non-lue { border-left: 4px solid var(--terre); }
+.fil-messages { list-style: none; padding: 1rem; margin: 0 0 1rem; max-height: 60vh; overflow-y: auto;
+    background: #fff; border: 1px solid var(--bordure); border-radius: var(--rayon); display: flex; flex-direction: column; gap: 0.6rem; }
+.message { max-width: 75%; align-self: flex-start; background: var(--sable); border-radius: 12px 12px 12px 2px; padding: 0.5rem 0.8rem; }
+.message--moi { align-self: flex-end; background: var(--bleu-clair); border-radius: 12px 12px 2px 12px; }
+.message p { margin: 0; }
+.message__entete { font-size: 0.8rem; color: var(--texte-doux); }
+.message__contenu { overflow-wrap: anywhere; }
+.formulaire-message textarea { margin: 0.4rem 0; }
