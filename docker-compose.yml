@@ -1,0 +1,44 @@
+# Souk Atlas : base Oracle + serveur web PHP.
+# Lancement : docker compose up -d   (les valeurs viennent du fichier .env)
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      # L'image crée cet utilisateur dans la base FREEPDB1 au premier démarrage
+      APP_USER: ${APP_USER}
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD}
+    ports:
+      - "${ORACLE_PORT:-1522}:1521"
+    volumes:
+      # Volume nommé : les données survivent à un "docker compose down"
+      - oracle-data:/opt/oracle/oradata
+      # Scripts exécutés une seule fois, quand la base est créée
+      - ./docker/oracle/init:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      # Script fourni par l'image : réussit quand la base accepte les connexions
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  php:
+    build: ./docker/php
+    environment:
+      DB_USER: ${APP_USER}
+      DB_PASSWORD: ${APP_USER_PASSWORD}
+      # "oracle" est le nom du service ci-dessus : Docker le résout en adresse IP
+      DB_DSN: //oracle:1521/FREEPDB1
+    ports:
+      - "${WEB_PORT:-8000}:80"
+    volumes:
+      # Le code est monté : une modification est visible sans reconstruire l'image
+      - ./:/var/www/html
+    depends_on:
+      oracle:
+        condition: service_healthy
+
+volumes:
+  oracle-data:

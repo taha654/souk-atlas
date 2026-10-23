@@ -1,0 +1,16 @@
+# Secrets
+.env
+
+# Photos envoyées par les utilisateurs
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Builds C++ et WebAssembly
+cpp/build/
+build/
+
+# Éditeurs et système
+.vscode/
+.idea/
+*.swp
+.DS_Store
