@@ -21,3 +21,53 @@ function date_fr(?string $dateIso, bool $avecHeure = false): string
     $date = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $dateIso);
     return $date === false ? $dateIso : $date->format($avecHeure ? 'd/m/Y à H:i' : 'd/m/Y');
 }
+
+/**
+ * Prix en dirhams à la française : 3948 → "3 948,00 MAD".
+ * L'espace des milliers est insécable (U+00A0) : "3 948" ne sera jamais coupé
+ * en fin de ligne.
+ */
+function format_prix(float $montant): string
+{
+    return number_format($montant, 2, ',', "\u{00A0}") . "\u{00A0}MAD";
+}
+
+/** "★ 4,5 sur 5 (12 avis)" ou "Pas encore d'avis" */
+function texte_note(?float $note, int $nbAvis): string
+{
+    if ($note === null || $nbAvis === 0) {
+        return 'Pas encore d\'avis';
+    }
+    return '★ ' . number_format($note, 1, ',', '') . ' sur 5 (' . $nbAvis . ' avis)';
+}
+
+function texte_stock(int $stock): string
+{
+    return match (true) {
+        $stock === 0 => 'Épuisé',
+        $stock <= 5 => 'Plus que ' . $stock . ' en stock',
+        default => 'En stock',
+    };
+}
+
+/**
+ * Numéros de pages à afficher : 1 … 4 5 [6] 7 8 … 20 (null = "…").
+ * Même algorithme que pagesAAfficher() dans public/assets/js/catalogue.js.
+ *
+ * @return list<int|null>
+ */
+function pages_a_afficher(int $page, int $pages): array
+{
+    $liste = [];
+    $precedent = 0;
+    for ($n = 1; $n <= $pages; $n++) {
+        if ($n === 1 || $n === $pages || abs($n - $page) <= 2) {
+            if ($n - $precedent > 1) {
+                $liste[] = null;
+            }
+            $liste[] = $n;
+            $precedent = $n;
+        }
+    }
+    return $liste;
+}

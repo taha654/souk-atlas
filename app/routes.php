@@ -18,4 +18,12 @@ return static function (Router $router): void {
     $router->get('/compte', 'CompteController@index');
     $router->get('/vendeur', 'VendeurController@index');
     $router->get('/admin', 'AdminController@index');
+
+    // Catalogue
+    $router->get('/catalogue', 'CatalogueController@index');
+    $router->get('/produit/{id}', 'ProduitController@fiche');
+
+    // API JSON (appelée par le JavaScript)
+    $router->get('/api/produits', 'Api\\CatalogueApiController@produits');
+    $router->get('/api/suggestions', 'Api\\CatalogueApiController@suggestions');
 };

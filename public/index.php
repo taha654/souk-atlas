@@ -40,8 +40,11 @@ header('Referrer-Policy: same-origin');              // l'URL complète n'est pa
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; object-src 'none'; "
     . "base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
 
-/** Page d'erreur HTML avec le bon code HTTP */
-$pageErreur = static function (int $statut, string $titre, string $message): Response {
+/** Erreur avec le bon code HTTP : en JSON pour l'API, en page HTML sinon */
+$pageErreur = static function (int $statut, string $titre, string $message) use ($request): Response {
+    if (str_starts_with($request->chemin, '/api/')) {
+        return Response::json(['erreur' => $titre, 'message' => $message], $statut);
+    }
     return Response::html(View::rendre('erreurs/erreur',
         ['statut' => $statut, 'titre_erreur' => $titre, 'message' => $message], $titre), $statut);
 };

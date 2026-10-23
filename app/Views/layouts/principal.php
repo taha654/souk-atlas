@@ -17,6 +17,7 @@ $flashs = Session::lireFlashs();
     <title><?= e($titre) ?> · Souk Atlas</title>
     <link rel="stylesheet" href="/assets/css/style.css">
     <script type="module" src="/assets/js/validation.js"></script>
+    <script type="module" src="/assets/js/recherche.js"></script>
 </head>
 <body>
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
@@ -24,8 +25,21 @@ $flashs = Session::lireFlashs();
 <header class="entete">
     <div class="entete__interieur">
         <a class="logo" href="/">Souk <span>Atlas</span></a>
+
+        <?php /* Recherche : formulaire GET ordinaire vers /catalogue ; recherche.js y
+                 ajoute l'autocomplétion (motif ARIA "combobox") */ ?>
+        <form class="recherche" role="search" method="get" action="/catalogue">
+            <label for="recherche" class="visuellement-cache">Rechercher un produit</label>
+            <input id="recherche" name="q" type="search" placeholder="Rechercher un produit…" maxlength="100"
+                   autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
+                   aria-controls="suggestions">
+            <ul id="suggestions" class="recherche__suggestions" role="listbox" aria-label="Suggestions" hidden></ul>
+            <button type="submit" class="bouton bouton--clair">Rechercher</button>
+        </form>
+
         <nav aria-label="Navigation principale">
             <ul class="menu">
+                <li><a href="/catalogue">Catalogue</a></li>
                 <?php if ($moi === null): ?>
                     <li><a href="/connexion">Connexion</a></li>
                     <li><a class="bouton bouton--clair" href="/inscription">Créer un compte</a></li>
