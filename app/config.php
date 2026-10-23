@@ -10,6 +10,8 @@ return [
     'url' => rtrim(getenv('APP_URL') ?: 'http://localhost:8000', '/'),
     // Emails simulés : écrits dans des fichiers .eml (voir app/Services/Mailer.php)
     'dossier_mails' => dirname(__DIR__) . '/var/mails',
+    // Racine web : les photos envoyées vont dans public/uploads/…
+    'dossier_public' => dirname(__DIR__) . '/public',
 
     'db' => [
         'utilisateur' => getenv('DB_USER') ?: '',

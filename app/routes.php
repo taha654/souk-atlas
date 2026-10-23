@@ -16,7 +16,22 @@ return static function (Router $router): void {
     $router->post('/deconnexion', 'AuthController@deconnecter');
 
     $router->get('/compte', 'CompteController@index');
+    // Espace vendeur (Auth::exigerRole('VENDEUR') dans chaque action)
     $router->get('/vendeur', 'VendeurController@index');
+    $router->get('/vendeur/boutique', 'VendeurController@formulaireBoutique');
+    $router->post('/vendeur/boutique', 'VendeurController@enregistrerBoutique');
+    $router->get('/vendeur/produits', 'VendeurController@produits');
+    $router->get('/vendeur/produits/nouveau', 'VendeurController@nouveauProduit');   // avant {id}
+    $router->post('/vendeur/produits', 'VendeurController@creerProduit');
+    $router->get('/vendeur/produits/{id}', 'VendeurController@produit');
+    $router->post('/vendeur/produits/{id}', 'VendeurController@modifierProduit');
+    $router->post('/vendeur/produits/{id}/stock', 'VendeurController@ajusterStock');
+    $router->post('/vendeur/produits/{id}/photos', 'VendeurController@ajouterPhoto');
+    $router->post('/vendeur/produits/{id}/photos/{photo}/supprimer', 'VendeurController@supprimerPhoto');
+    $router->get('/vendeur/commandes', 'VendeurController@commandes');
+    $router->get('/vendeur/commandes/{numero}', 'VendeurController@commande');
+    $router->post('/vendeur/commandes/{numero}/statut', 'VendeurController@changerStatutCommande');
+    $router->get('/api/vendeur/statistiques', 'Api\\StatistiquesApiController@vendeur');
     $router->get('/admin', 'AdminController@index');
 
     // Catalogue

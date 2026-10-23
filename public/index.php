@@ -82,6 +82,11 @@ try {
     $reponse = $controleur->$action(...$route['parametres']);
 
 } catch (NonConnecte) {
+    // Une API ne redirige pas vers une page HTML : elle répond 401 en JSON
+    if (str_starts_with($request->chemin, '/api/')) {
+        (Response::json(['erreur' => 'Non connecté', 'message' => 'Connectez-vous pour accéder à cette ressource.'], 401))->envoyer();
+        exit;
+    }
     $retour = $request->methode === 'GET' ? '?retour=' . rawurlencode($request->chemin) : '';
     if (Session::vientDExpirer()) {
         Session::flash('info', 'Votre session a expiré après une période d\'inactivité. Reconnectez-vous.');

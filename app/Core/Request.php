@@ -22,6 +22,8 @@ final class Request
         public readonly bool $https,
         /** @var array<string, string> en-têtes HTTP, noms en minuscules ("x-csrf-token") */
         public readonly array $entetes = [],
+        /** @var array<string, mixed> fichiers envoyés ($_FILES) */
+        public readonly array $fichiers = [],
     ) {
     }
 
@@ -41,6 +43,7 @@ final class Request
             // Même logique : HTTPS vu par Apache, pas l'en-tête X-Forwarded-Proto
             ($_SERVER['HTTPS'] ?? '') === 'on',
             self::entetesDepuisServeur($_SERVER),
+            $_FILES,
         );
     }
 
@@ -60,6 +63,21 @@ final class Request
             }
         }
         return $entetes;
+    }
+
+    /**
+     * Un fichier envoyé (un seul, jamais un tableau de fichiers), ou null.
+     *
+     * @return array{name: string, type: string, tmp_name: string, error: int, size: int}|null
+     */
+    public function fichier(string $nom): ?array
+    {
+        $fichier = $this->fichiers[$nom] ?? null;
+        // name="photo[]" donnerait des tableaux dans chaque clé : refusé
+        if (!is_array($fichier) || !is_string($fichier['tmp_name'] ?? null) || !is_int($fichier['error'] ?? null)) {
+            return null;
+        }
+        return $fichier;
     }
 
     public function entete(string $nom): ?string
