@@ -20,6 +20,20 @@ CREATE OR REPLACE PACKAGE BODY pkg_annonce AS
         END IF;
     END verifier_auteur;
 
+    -- Déclarée AVANT publier et modifier, qui l'appellent (sinon PLS-00313)
+    PROCEDURE verifier_donnees(p_titre IN VARCHAR2, p_description IN VARCHAR2, p_prix IN NUMBER, p_ville IN VARCHAR2) IS
+    BEGIN
+        IF LENGTH(TRIM(p_titre)) < 5 OR TRIM(p_titre) IS NULL THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le titre doit faire au moins 5 caractères.');
+        END IF;
+        IF TRIM(p_description) IS NULL OR TRIM(p_ville) IS NULL THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'La description et la ville sont obligatoires.');
+        END IF;
+        IF p_prix IS NULL OR p_prix < 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le prix ne peut pas être négatif.');
+        END IF;
+    END verifier_donnees;
+
     PROCEDURE publier(
         p_id_utilisateur IN  NUMBER,
         p_id_categorie   IN  NUMBER,
@@ -41,15 +55,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_annonce AS
         IF v_statut_compte IS NULL OR v_statut_compte <> 'ACTIF' THEN
             pkg_erreurs.lever(pkg_erreurs.c_compte_introuvable, 'Compte introuvable ou désactivé.');
         END IF;
-        IF LENGTH(TRIM(p_titre)) < 5 OR TRIM(p_titre) IS NULL THEN
-            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le titre doit faire au moins 5 caractères.');
-        END IF;
-        IF TRIM(p_description) IS NULL OR TRIM(p_ville) IS NULL THEN
-            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'La description et la ville sont obligatoires.');
-        END IF;
-        IF p_prix IS NULL OR p_prix < 0 THEN
-            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le prix ne peut pas être négatif.');
-        END IF;
+        verifier_donnees(p_titre, p_description, p_prix, p_ville);
 
         -- Sans score (moteur C++ absent), l'annonce part directement en ligne
         v_statut := CASE WHEN p_score_risque >= c_seuil_moderation THEN 'EN_MODERATION' ELSE 'EN_LIGNE' END;
@@ -115,6 +121,102 @@ CREATE OR REPLACE PACKAGE BODY pkg_annonce AS
          WHERE statut = 'EN_LIGNE' AND date_expiration < SYSDATE;
         p_nb := SQL%ROWCOUNT;
     END expirer_annonces;
+
+    PROCEDURE modifier(
+        p_id_annonce     IN NUMBER,
+        p_id_utilisateur IN NUMBER,
+        p_id_categorie   IN NUMBER,
+        p_titre          IN VARCHAR2,
+        p_description    IN VARCHAR2,
+        p_prix           IN NUMBER,
+        p_ville          IN VARCHAR2)
+    IS
+        v_annonce annonce%ROWTYPE := verrouiller(p_id_annonce);
+    BEGIN
+        verifier_auteur(v_annonce, p_id_utilisateur);
+        IF v_annonce.statut NOT IN ('EN_LIGNE', 'EN_MODERATION') THEN
+            pkg_erreurs.lever(pkg_erreurs.c_etat_annonce_invalide,
+                'Une annonce ' || LOWER(v_annonce.statut) || ' ne peut plus être modifiée.');
+        END IF;
+        verifier_donnees(p_titre, p_description, p_prix, p_ville);
+        UPDATE annonce
+           SET id_categorie = p_id_categorie, titre = TRIM(p_titre), description = TRIM(p_description),
+               prix = p_prix, ville = TRIM(p_ville)
+         WHERE id = p_id_annonce;
+    END modifier;
+
+    FUNCTION rechercher(
+        p_texte         IN VARCHAR2 DEFAULT NULL,
+        p_id_categorie  IN NUMBER   DEFAULT NULL,
+        p_ville         IN VARCHAR2 DEFAULT NULL,
+        p_prix_min      IN NUMBER   DEFAULT NULL,
+        p_prix_max      IN NUMBER   DEFAULT NULL,
+        p_tri           IN VARCHAR2 DEFAULT 'recent',
+        p_page          IN NUMBER   DEFAULT 1,
+        p_taille_page   IN NUMBER   DEFAULT 20) RETURN SYS_REFCURSOR
+    IS
+        v_curseur SYS_REFCURSOR;
+        v_texte   VARCHAR2(200) := pkg_catalogue.normaliser(TRIM(p_texte));
+        v_ville   VARCHAR2(60)  := pkg_catalogue.normaliser(TRIM(p_ville));
+        v_taille  NUMBER := LEAST(GREATEST(NVL(p_taille_page, 20), 1), 100);
+        v_page    NUMBER := GREATEST(NVL(p_page, 1), 1);
+    BEGIN
+        OPEN v_curseur FOR
+            SELECT a.id, a.titre, a.prix, a.ville, a.id_categorie, c.nom AS categorie, a.date_publication,
+                   (SELECT MIN(ph.chemin) KEEP (DENSE_RANK FIRST ORDER BY ph.ordre)
+                      FROM annonce_photo ph WHERE ph.id_annonce = a.id) AS photo,
+                   COUNT(*) OVER () AS total
+              FROM annonce a
+              JOIN categorie c ON c.id = a.id_categorie
+             WHERE a.statut = 'EN_LIGNE'
+               AND (v_texte IS NULL
+                    OR a.titre_recherche LIKE '%' || v_texte || '%'
+                    OR pkg_catalogue.normaliser(a.description) LIKE '%' || v_texte || '%')
+               -- Ville sans accents ni majuscules : "fes" trouve "Fès"
+               AND (v_ville IS NULL OR pkg_catalogue.normaliser(a.ville) = v_ville)
+               AND (p_prix_min IS NULL OR a.prix >= p_prix_min)
+               AND (p_prix_max IS NULL OR a.prix <= p_prix_max)
+               AND (p_id_categorie IS NULL
+                    OR a.id_categorie IN (SELECT d.id FROM categorie d
+                                           START WITH d.id = p_id_categorie
+                                         CONNECT BY PRIOR d.id = d.id_parent))
+             ORDER BY CASE WHEN p_tri = 'prix_asc'  THEN a.prix END ASC,
+                      CASE WHEN p_tri = 'prix_desc' THEN a.prix END DESC,
+                      a.date_publication DESC, a.id DESC
+            OFFSET (v_page - 1) * v_taille ROWS FETCH NEXT v_taille ROWS ONLY;
+        RETURN v_curseur;
+    END rechercher;
+
+    PROCEDURE ajouter_photo(p_id_annonce IN NUMBER, p_id_utilisateur IN NUMBER, p_chemin IN VARCHAR2, p_id OUT NUMBER) IS
+        v_annonce annonce%ROWTYPE := verrouiller(p_id_annonce);
+        v_nb      PLS_INTEGER;
+    BEGIN
+        verifier_auteur(v_annonce, p_id_utilisateur);
+        SELECT COUNT(*) INTO v_nb FROM annonce_photo WHERE id_annonce = p_id_annonce;
+        IF v_nb >= c_photos_max THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Une annonce a au plus ' || c_photos_max || ' photos.');
+        END IF;
+        INSERT INTO annonce_photo (id_annonce, chemin, ordre) VALUES (p_id_annonce, p_chemin, v_nb + 1)
+        RETURNING id INTO p_id;
+    END ajouter_photo;
+
+    PROCEDURE retirer_photo(p_id_photo IN NUMBER, p_id_utilisateur IN NUMBER, p_chemin OUT VARCHAR2) IS
+        v_id_annonce annonce_photo.id_annonce%TYPE;
+    BEGIN
+        BEGIN
+            SELECT id_annonce, chemin INTO v_id_annonce, p_chemin FROM annonce_photo WHERE id = p_id_photo;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Photo introuvable : ' || p_id_photo);
+        END;
+        verifier_auteur(verrouiller(v_id_annonce), p_id_utilisateur);
+        DELETE FROM annonce_photo WHERE id = p_id_photo;
+        MERGE INTO annonce_photo ph
+        USING (SELECT id, ROW_NUMBER() OVER (ORDER BY ordre, id) AS nouvel_ordre
+                 FROM annonce_photo WHERE id_annonce = v_id_annonce) n
+           ON (ph.id = n.id)
+         WHEN MATCHED THEN UPDATE SET ph.ordre = n.nouvel_ordre;
+    END retirer_photo;
 
     PROCEDURE ajouter_favori(p_id_utilisateur IN NUMBER, p_id_annonce IN NUMBER) IS
     BEGIN

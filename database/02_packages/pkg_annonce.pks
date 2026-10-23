@@ -33,6 +33,35 @@ CREATE OR REPLACE PACKAGE pkg_annonce AS
     -- Appelée par le job JOB_EXPIRATION_ANNONCES ; p_nb = annonces expirées
     PROCEDURE expirer_annonces(p_nb OUT NUMBER);
 
+    -- Modification par l'auteur (annonce EN_LIGNE ou EN_MODERATION ; -20011 sinon)
+    PROCEDURE modifier(
+        p_id_annonce     IN NUMBER,
+        p_id_utilisateur IN NUMBER,
+        p_id_categorie   IN NUMBER,
+        p_titre          IN VARCHAR2,
+        p_description    IN VARCHAR2,
+        p_prix           IN NUMBER,
+        p_ville          IN VARCHAR2);
+
+    -- Recherche des annonces EN LIGNE (insensible à la casse et aux accents).
+    -- p_tri : 'recent' (défaut), 'prix_asc', 'prix_desc'.
+    -- Colonnes : id, titre, prix, ville, id_categorie, categorie, date_publication,
+    --            photo, total (nombre total de résultats, COUNT(*) OVER ())
+    FUNCTION rechercher(
+        p_texte         IN VARCHAR2 DEFAULT NULL,
+        p_id_categorie  IN NUMBER   DEFAULT NULL,
+        p_ville         IN VARCHAR2 DEFAULT NULL,
+        p_prix_min      IN NUMBER   DEFAULT NULL,
+        p_prix_max      IN NUMBER   DEFAULT NULL,
+        p_tri           IN VARCHAR2 DEFAULT 'recent',
+        p_page          IN NUMBER   DEFAULT 1,
+        p_taille_page   IN NUMBER   DEFAULT 20) RETURN SYS_REFCURSOR;
+
+    -- Photos d'annonce, réservées à l'auteur (-20012) ; au plus c_photos_max (-20017)
+    c_photos_max CONSTANT PLS_INTEGER := 6;
+    PROCEDURE ajouter_photo(p_id_annonce IN NUMBER, p_id_utilisateur IN NUMBER, p_chemin IN VARCHAR2, p_id OUT NUMBER);
+    PROCEDURE retirer_photo(p_id_photo IN NUMBER, p_id_utilisateur IN NUMBER, p_chemin OUT VARCHAR2);
+
     -- Favoris (ajouter deux fois la même annonce n'est pas une erreur)
     PROCEDURE ajouter_favori(p_id_utilisateur IN NUMBER, p_id_annonce IN NUMBER);
     PROCEDURE retirer_favori(p_id_utilisateur IN NUMBER, p_id_annonce IN NUMBER);

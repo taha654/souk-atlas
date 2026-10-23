@@ -39,6 +39,13 @@ BEGIN
                      WHERE cl.id_commande IN (SELECT COLUMN_VALUE FROM TABLE(v_commandes)));
 
     -- 2. Dépendances, des feuilles vers la racine (ordre imposé par les clés étrangères)
+    -- Conversations où un compte de test participe (messages en cascade), puis
+    -- annonces des comptes de test (photos, favoris, conversations en cascade)
+    DELETE FROM conversation WHERE id_acheteur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes))
+                                OR id_vendeur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes));
+    DELETE FROM signalement WHERE id_annonce IN (SELECT id FROM annonce
+                                                  WHERE id_utilisateur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes)));
+    DELETE FROM annonce WHERE id_utilisateur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes));
     DELETE FROM signalement WHERE id_auteur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes))
         OR id_avis IN (SELECT id FROM avis WHERE id_utilisateur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes)));
     DELETE FROM avis WHERE id_utilisateur IN (SELECT COLUMN_VALUE FROM TABLE(v_comptes));

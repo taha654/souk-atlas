@@ -93,6 +93,55 @@ BEGIN
     pkg_test.verifier_egal('renouveler : de nouveau EN_LIGNE', 'EN_LIGNE', v_texte);
     pkg_test.verifier_egal('renouveler : 30 jours de plus', 30, ROUND(v_date - SYSDATE));
 
+    -- ----- Modification, recherche, photos -----
+    pkg_annonce.modifier(v_id2, c_auteur, 3, 'Téléphone reconditionné', 'Bon état général.', 450, 'Rabat');
+    SELECT titre || '/' || prix INTO v_texte FROM annonce WHERE id = v_id2;
+    pkg_test.verifier_egal('modifier : titre et prix changés', 'Téléphone reconditionné/450', v_texte);
+    BEGIN
+        pkg_annonce.modifier(v_id2, c_autre, 3, 'Volée', 'x', 1, 'Rabat');
+        pkg_test.echec('modifier : réservé à l''auteur', 'aucune erreur levée');
+    EXCEPTION WHEN OTHERS THEN
+        pkg_test.verifier_erreur('modifier : réservé à l''auteur', -20012, SQLCODE, SQLERRM);
+    END;
+    BEGIN
+        pkg_annonce.modifier(v_id, c_auteur, 30, 'Citroën C3 2018', 'x', 1, 'Rabat');   -- v_id est VENDUE
+        pkg_test.echec('modifier : impossible pour une annonce vendue', 'aucune erreur levée');
+    EXCEPTION WHEN OTHERS THEN
+        pkg_test.verifier_erreur('modifier : impossible pour une annonce vendue', -20011, SQLCODE, SQLERRM);
+    END;
+
+    DECLARE
+        v_curseur SYS_REFCURSOR;
+    BEGIN
+        v_curseur := pkg_annonce.rechercher(p_texte => 'TELEPHONE RECONDITIONNE');
+        pkg_test.verifier_egal('rechercher : casse et accents ignorés', TO_CHAR(v_id2), pkg_test.valeur(v_curseur, 'id'));
+        v_curseur := pkg_annonce.rechercher(p_ville => 'fes', p_taille_page => 100);
+        SELECT COUNT(*) INTO v_nombre FROM annonce WHERE statut = 'EN_LIGNE' AND ville = 'Fès';
+        pkg_test.verifier_egal('rechercher : "fes" trouve les annonces de Fès', v_nombre, pkg_test.nb_lignes(v_curseur));
+        v_curseur := pkg_annonce.rechercher(p_id_categorie => 29, p_taille_page => 100);   -- Véhicules
+        SELECT COUNT(*) INTO v_nombre FROM annonce WHERE statut = 'EN_LIGNE' AND id_categorie IN (30, 31);
+        pkg_test.verifier_egal('rechercher : sous-catégories (voitures + motos)', v_nombre, pkg_test.nb_lignes(v_curseur));
+        v_curseur := pkg_annonce.rechercher(p_texte => 'Citroën');                         -- vendue
+        pkg_test.verifier_egal('rechercher : annonce vendue absente', 0, pkg_test.nb_lignes(v_curseur));
+        v_curseur := pkg_annonce.rechercher(p_tri => 'prix_desc');
+        SELECT MAX(prix) INTO v_nombre FROM annonce WHERE statut = 'EN_LIGNE';
+        pkg_test.verifier_egal('rechercher : tri par prix décroissant', TO_CHAR(v_nombre), pkg_test.valeur(v_curseur, 'prix'));
+    END;
+
+    pkg_annonce.ajouter_photo(v_id2, c_auteur, '/uploads/annonces/a.jpg', v_nombre);
+    pkg_annonce.ajouter_photo(v_id2, c_auteur, '/uploads/annonces/b.jpg', v_nombre);
+    BEGIN
+        pkg_annonce.ajouter_photo(v_id2, c_autre, '/uploads/annonces/c.jpg', v_nombre);
+        pkg_test.echec('ajouter_photo : réservé à l''auteur', 'aucune erreur levée');
+    EXCEPTION WHEN OTHERS THEN
+        pkg_test.verifier_erreur('ajouter_photo : réservé à l''auteur', -20012, SQLCODE, SQLERRM);
+    END;
+    SELECT MIN(id) INTO v_nombre FROM annonce_photo WHERE id_annonce = v_id2;
+    pkg_annonce.retirer_photo(v_nombre, c_auteur, v_texte);
+    SELECT LISTAGG(ordre || ':' || chemin, ',') WITHIN GROUP (ORDER BY ordre) INTO v_texte
+      FROM annonce_photo WHERE id_annonce = v_id2;
+    pkg_test.verifier_egal('retirer_photo : la restante renumérotée', '1:/uploads/annonces/b.jpg', v_texte);
+
     -- ----- Favoris -----
     pkg_annonce.ajouter_favori(c_autre, v_id2);
     pkg_annonce.ajouter_favori(c_autre, v_id2);   -- deux fois : pas d'erreur

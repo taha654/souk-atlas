@@ -455,6 +455,10 @@ SELECT id, id_utilisateur, id_categorie, titre, description, prix, ville, statut
     SELECT 40, 11, 31, 'Scooter électrique', 'Autonomie 40 km, chargeur fourni.', 4500, 'Casablanca', 'EXPIREE', 7, NULL, 45 FROM dual
   );
 
+-- Une illustration par annonce (fichiers générés par tools/generer_illustrations.php)
+INSERT INTO annonce_photo (id_annonce, chemin, ordre)
+SELECT id, '/assets/img/annonces/annonce-' || id || '.svg', 1 FROM annonce;
+
 -- -----------------------------------------------------------------------------
 -- Favoris, messagerie
 -- -----------------------------------------------------------------------------
