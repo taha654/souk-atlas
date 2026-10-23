@@ -33,7 +33,10 @@ CREATE OR REPLACE PACKAGE pkg_annonce AS
     -- Appelée par le job JOB_EXPIRATION_ANNONCES ; p_nb = annonces expirées
     PROCEDURE expirer_annonces(p_nb OUT NUMBER);
 
-    -- Modification par l'auteur (annonce EN_LIGNE ou EN_MODERATION ; -20011 sinon)
+    -- Modification par l'auteur (annonce EN_LIGNE ou EN_MODERATION ; -20011 sinon).
+    -- Le texte change : le score est recalculé. Une annonce en ligne dont le
+    -- nouveau score atteint le seuil repart en modération (sinon, il suffirait de
+    -- publier un texte anodin puis de le modifier pour échapper au contrôle).
     PROCEDURE modifier(
         p_id_annonce     IN NUMBER,
         p_id_utilisateur IN NUMBER,
@@ -41,7 +44,15 @@ CREATE OR REPLACE PACKAGE pkg_annonce AS
         p_titre          IN VARCHAR2,
         p_description    IN VARCHAR2,
         p_prix           IN NUMBER,
-        p_ville          IN VARCHAR2);
+        p_ville          IN VARCHAR2,
+        p_score_risque   IN NUMBER DEFAULT NULL);
+
+    -- Données dont le moteur C++ a besoin pour noter une annonce (une seule ligne) :
+    --   prix_median, nb_annonces : annonces de la catégorie et de ses sous-catégories
+    --                              (MEDIAN résiste mieux que AVG aux prix extrêmes)
+    --   annonces_24h             : annonces publiées par l'auteur sur 24 h
+    --   anciennete_jours         : âge du compte
+    FUNCTION contexte_risque(p_id_utilisateur IN NUMBER, p_id_categorie IN NUMBER) RETURN SYS_REFCURSOR;
 
     -- Recherche des annonces EN LIGNE (insensible à la casse et aux accents).
     -- p_tri : 'recent' (défaut), 'prix_asc', 'prix_desc'.

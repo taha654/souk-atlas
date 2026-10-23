@@ -44,5 +44,14 @@ CREATE OR REPLACE PACKAGE pkg_commande AS
     -- Remet le stock et rembourse ; -20016 si la commande est déjà expédiée
     PROCEDURE annuler(p_id_commande IN NUMBER);
 
+    -- Score de risque (0 à 100) calculé par le moteur C++ après la commande ;
+    -- -20017 hors de [0, 100], -20018 si la commande n'existe pas
+    PROCEDURE definir_score(p_id_commande IN NUMBER, p_score IN NUMBER);
+
+    -- Données dont le moteur a besoin pour noter les commandes d'un achat.
+    -- Colonnes : id, numero, total_ttc, quantite_max, mode_paiement,
+    --            commandes_precedentes, panier_moyen, commandes_24h, anciennete_jours
+    FUNCTION contexte_risque(p_reference_achat IN VARCHAR2) RETURN SYS_REFCURSOR;
+
 END pkg_commande;
 /

@@ -413,6 +413,30 @@ CREATE INDEX ix_message_conversation ON message (id_conversation, date_envoi);
 CREATE INDEX ix_message_expediteur ON message (id_expediteur);
 
 -- -----------------------------------------------------------------------------
+-- Recommandations « souvent achetés ensemble » (étape 8).
+-- Calculées par le moteur C++ à partir des lignes de commande, puis rangées
+-- ici par PKG_CATALOGUE.remplacer_recommandations : la fiche produit lit cette
+-- table au lieu de relancer le calcul à chaque visite.
+-- -----------------------------------------------------------------------------
+CREATE TABLE recommandation (
+    id_produit             NUMBER        NOT NULL,
+    id_produit_recommande  NUMBER        NOT NULL,
+    -- Similarité cosinus (0 à 1) calculée par le moteur
+    score                  NUMBER(5, 4)  NOT NULL,
+    -- Nombre d'achats contenant les deux produits
+    nb_communs             NUMBER(10)    NOT NULL,
+    date_calcul            DATE          DEFAULT SYSDATE NOT NULL,
+    CONSTRAINT pk_recommandation PRIMARY KEY (id_produit, id_produit_recommande),
+    CONSTRAINT fk_recommandation_produit FOREIGN KEY (id_produit) REFERENCES produit (id) ON DELETE CASCADE,
+    CONSTRAINT fk_recommandation_recommande FOREIGN KEY (id_produit_recommande) REFERENCES produit (id) ON DELETE CASCADE,
+    CONSTRAINT ck_recommandation_distincts CHECK (id_produit <> id_produit_recommande),
+    CONSTRAINT ck_recommandation_score CHECK (score BETWEEN 0 AND 1),
+    CONSTRAINT ck_recommandation_communs CHECK (nb_communs >= 1)
+);
+-- La clé primaire indexe déjà id_produit (première colonne) ; il reste la seconde FK
+CREATE INDEX ix_recommandation_recommande ON recommandation (id_produit_recommande);
+
+-- -----------------------------------------------------------------------------
 -- Journal d'audit (rempli par les triggers TRG_AUDIT_*)
 -- -----------------------------------------------------------------------------
 CREATE TABLE journal_audit (

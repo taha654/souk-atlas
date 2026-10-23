@@ -108,5 +108,31 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
     -- Appelée par le job JOB_FIN_PROMOTIONS ; p_nb = nombre de promotions désactivées
     PROCEDURE desactiver_promotions_terminees(p_nb OUT NUMBER);
 
+    -- ----- Recommandations « souvent achetés ensemble » (étape 8) -----
+    -- Tableau associatif : c'est le type de collection qu'OCI8 sait lier depuis
+    -- PHP (oci_bind_array_by_name) pour envoyer plusieurs valeurs en un appel
+    TYPE t_nombres IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+
+    -- Achats à analyser par le moteur C++ : une ligne (reference_achat, id_produit)
+    -- par produit acheté, commandes annulées exclues
+    FUNCTION paniers_achetes RETURN SYS_REFCURSOR;
+
+    -- Remplace TOUTES les recommandations par celles calculées par le moteur.
+    -- Les quatre tableaux sont lus en parallèle (même indice = même recommandation).
+    -- -20017 si les tableaux n'ont pas la même taille ou si un score sort de [0, 1].
+    PROCEDURE remplacer_recommandations(
+        p_produits    IN  t_nombres,
+        p_recommandes IN  t_nombres,
+        p_scores      IN  t_nombres,
+        p_communs     IN  t_nombres,
+        p_nb          OUT NUMBER);
+
+    -- Âge du dernier calcul en heures (NULL si jamais calculé)
+    FUNCTION age_recommandations RETURN NUMBER;
+
+    -- Produits recommandés et VISIBLES (actifs, boutique validée, en stock), meilleur
+    -- score d'abord. Mêmes colonnes que rechercher, plus score et nb_communs.
+    FUNCTION recommandations(p_id_produit IN NUMBER, p_limite IN NUMBER DEFAULT 4) RETURN SYS_REFCURSOR;
+
 END pkg_catalogue;
 /

@@ -129,7 +129,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_annonce AS
         p_titre          IN VARCHAR2,
         p_description    IN VARCHAR2,
         p_prix           IN NUMBER,
-        p_ville          IN VARCHAR2)
+        p_ville          IN VARCHAR2,
+        p_score_risque   IN NUMBER DEFAULT NULL)
     IS
         v_annonce annonce%ROWTYPE := verrouiller(p_id_annonce);
     BEGIN
@@ -141,9 +142,37 @@ CREATE OR REPLACE PACKAGE BODY pkg_annonce AS
         verifier_donnees(p_titre, p_description, p_prix, p_ville);
         UPDATE annonce
            SET id_categorie = p_id_categorie, titre = TRIM(p_titre), description = TRIM(p_description),
-               prix = p_prix, ville = TRIM(p_ville)
+               prix = p_prix, ville = TRIM(p_ville),
+               -- Sans nouveau score (moteur indisponible), on garde l'ancien
+               score_risque = NVL(p_score_risque, score_risque),
+               -- Une annonce EN_MODERATION y reste : seul un modérateur la libère
+               statut = CASE WHEN statut = 'EN_LIGNE' AND p_score_risque >= c_seuil_moderation
+                             THEN 'EN_MODERATION' ELSE statut END
          WHERE id = p_id_annonce;
     END modifier;
+
+    FUNCTION contexte_risque(p_id_utilisateur IN NUMBER, p_id_categorie IN NUMBER) RETURN SYS_REFCURSOR IS
+        v_curseur SYS_REFCURSOR;
+    BEGIN
+        OPEN v_curseur FOR
+            SELECT (SELECT MEDIAN(a.prix) FROM annonce a
+                     WHERE a.statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE')
+                       AND a.id_categorie IN (SELECT c.id FROM categorie c
+                                               START WITH c.id = p_id_categorie
+                                             CONNECT BY PRIOR c.id = c.id_parent)) AS prix_median,
+                   (SELECT COUNT(*) FROM annonce a
+                     WHERE a.statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE')
+                       AND a.id_categorie IN (SELECT c.id FROM categorie c
+                                               START WITH c.id = p_id_categorie
+                                             CONNECT BY PRIOR c.id = c.id_parent)) AS nb_annonces,
+                   (SELECT COUNT(*) FROM annonce a
+                     WHERE a.id_utilisateur = p_id_utilisateur
+                       AND a.date_publication > SYSDATE - 1) AS annonces_24h,
+                   (SELECT SYSDATE - u.date_creation FROM utilisateur u
+                     WHERE u.id = p_id_utilisateur) AS anciennete_jours
+              FROM DUAL;
+        RETURN v_curseur;
+    END contexte_risque;
 
     FUNCTION rechercher(
         p_texte         IN VARCHAR2 DEFAULT NULL,

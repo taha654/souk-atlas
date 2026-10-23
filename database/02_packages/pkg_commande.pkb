@@ -278,5 +278,40 @@ CREATE OR REPLACE PACKAGE BODY pkg_commande AS
         UPDATE commande SET statut = 'ANNULEE', date_annulation = SYSDATE WHERE id = p_id_commande;
     END annuler;
 
+    PROCEDURE definir_score(p_id_commande IN NUMBER, p_score IN NUMBER) IS
+    BEGIN
+        IF p_score IS NULL OR p_score NOT BETWEEN 0 AND 100 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Score de risque hors de [0, 100].');
+        END IF;
+        UPDATE commande SET score_risque = ROUND(p_score) WHERE id = p_id_commande;
+        IF SQL%ROWCOUNT = 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Commande introuvable.');
+        END IF;
+    END definir_score;
+
+    FUNCTION contexte_risque(p_reference_achat IN VARCHAR2) RETURN SYS_REFCURSOR IS
+        v_curseur SYS_REFCURSOR;
+    BEGIN
+        OPEN v_curseur FOR
+            SELECT c.id, c.numero, c.total_ttc, c.mode_paiement,
+                   (SELECT MAX(l.quantite) FROM commande_ligne l WHERE l.id_commande = c.id) AS quantite_max,
+                   -- Historique du client AVANT cet achat (commandes annulées exclues)
+                   (SELECT COUNT(*) FROM commande h
+                     WHERE h.id_client = c.id_client AND h.reference_achat <> c.reference_achat
+                       AND h.statut <> 'ANNULEE') AS commandes_precedentes,
+                   (SELECT NVL(AVG(h.total_ttc), 0) FROM commande h
+                     WHERE h.id_client = c.id_client AND h.reference_achat <> c.reference_achat
+                       AND h.statut <> 'ANNULEE') AS panier_moyen,
+                   -- Achats (et non commandes par boutique) des dernières 24 h, celui-ci compris
+                   (SELECT COUNT(DISTINCT h.reference_achat) FROM commande h
+                     WHERE h.id_client = c.id_client AND h.date_commande > SYSDATE - 1) AS commandes_24h,
+                   SYSDATE - u.date_creation AS anciennete_jours
+              FROM commande c
+              JOIN utilisateur u ON u.id = c.id_client
+             WHERE c.reference_achat = p_reference_achat
+             ORDER BY c.id;
+        RETURN v_curseur;
+    END contexte_risque;
+
 END pkg_commande;
 /

@@ -383,5 +383,88 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
         p_nb := SQL%ROWCOUNT;
     END desactiver_promotions_terminees;
 
+    -- ----- Recommandations -----
+
+    FUNCTION paniers_achetes RETURN SYS_REFCURSOR IS
+        v_curseur SYS_REFCURSOR;
+    BEGIN
+        -- Un "panier" = un achat (reference_achat), même s'il couvre plusieurs boutiques
+        OPEN v_curseur FOR
+            SELECT DISTINCT c.reference_achat, l.id_produit
+              FROM commande c
+              JOIN commande_ligne l ON l.id_commande = c.id
+             WHERE c.statut <> 'ANNULEE'
+             ORDER BY c.reference_achat, l.id_produit;
+        RETURN v_curseur;
+    END paniers_achetes;
+
+    PROCEDURE remplacer_recommandations(
+        p_produits    IN  t_nombres,
+        p_recommandes IN  t_nombres,
+        p_scores      IN  t_nombres,
+        p_communs     IN  t_nombres,
+        p_nb          OUT NUMBER)
+    IS
+        i PLS_INTEGER;
+    BEGIN
+        IF p_produits.COUNT <> p_recommandes.COUNT OR p_produits.COUNT <> p_scores.COUNT
+           OR p_produits.COUNT <> p_communs.COUNT THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Recommandations : tableaux de tailles différentes.');
+        END IF;
+        -- Contrôle avant d'écrire quoi que ce soit (message clair plutôt qu'un ORA-02290)
+        i := p_scores.FIRST;
+        WHILE i IS NOT NULL LOOP
+            IF p_scores(i) IS NULL OR p_scores(i) NOT BETWEEN 0 AND 1 THEN
+                pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Recommandations : score hors de [0, 1].');
+            END IF;
+            i := p_scores.NEXT(i);
+        END LOOP;
+
+        -- Deux recalculs simultanés (deux visiteurs) se mettent en file d'attente
+        -- au lieu de mélanger leurs lignes ; le verrou tombe au COMMIT de PHP
+        LOCK TABLE recommandation IN EXCLUSIVE MODE;
+        DELETE FROM recommandation;
+
+        -- FORALL : UN aller-retour vers le moteur SQL pour toutes les lignes, au
+        -- lieu d'un INSERT par tour de boucle. "INDICES OF" accepte des indices
+        -- non consécutifs (PHP numérote à partir de 0 ou de 1, peu importe).
+        FORALL k IN INDICES OF p_produits
+            INSERT INTO recommandation (id_produit, id_produit_recommande, score, nb_communs, date_calcul)
+            VALUES (p_produits(k), p_recommandes(k), ROUND(p_scores(k), 4), p_communs(k), SYSDATE);
+        p_nb := SQL%ROWCOUNT;
+    END remplacer_recommandations;
+
+    FUNCTION age_recommandations RETURN NUMBER IS
+        v_age NUMBER;
+    BEGIN
+        -- Différence de deux DATE = nombre de jours (décimal) ; MAX d'une table vide = NULL
+        SELECT (SYSDATE - MAX(date_calcul)) * 24 INTO v_age FROM recommandation;
+        RETURN v_age;
+    END age_recommandations;
+
+    FUNCTION recommandations(p_id_produit IN NUMBER, p_limite IN NUMBER DEFAULT 4) RETURN SYS_REFCURSOR IS
+        v_curseur SYS_REFCURSOR;
+        v_limite  NUMBER := LEAST(GREATEST(NVL(p_limite, 4), 1), 20);
+    BEGIN
+        OPEN v_curseur FOR
+            SELECT p.id, p.nom, p.id_categorie, b.nom AS boutique, p.prix_ht,
+                   pkg_catalogue.pourcentage_promo(p.id) AS pourcentage_promo,
+                   pkg_catalogue.prix_courant(p.id)      AS prix_courant_ht,
+                   pkg_catalogue.prix_courant_ttc(p.id)  AS prix_courant_ttc,
+                   pkg_catalogue.ttc(p.prix_ht)          AS prix_ttc,
+                   p.stock, p.note_moyenne, p.nb_avis,
+                   (SELECT MIN(ph.chemin) KEEP (DENSE_RANK FIRST ORDER BY ph.ordre)
+                      FROM produit_photo ph WHERE ph.id_produit = p.id) AS photo,
+                   r.score, r.nb_communs
+              FROM recommandation r
+              JOIN produit p  ON p.id = r.id_produit_recommande
+              JOIN boutique b ON b.id = p.id_boutique
+             WHERE r.id_produit = p_id_produit
+               AND p.statut = 'ACTIF' AND b.statut = 'VALIDEE' AND p.stock > 0
+             ORDER BY r.score DESC, r.nb_communs DESC, p.id
+             FETCH FIRST v_limite ROWS ONLY;
+        RETURN v_curseur;
+    END recommandations;
+
 END pkg_catalogue;
 /
