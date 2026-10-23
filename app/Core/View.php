@@ -13,6 +13,19 @@ final class View
 {
     private static string $dossier = __DIR__ . '/../Views';
 
+    /** @var array<string, mixed> données communes à toutes les pages (ex. nombre d'articles du panier) */
+    private static array $partage = [];
+
+    public static function partager(string $cle, mixed $valeur): void
+    {
+        self::$partage[$cle] = $valeur;
+    }
+
+    public static function partage(string $cle, mixed $defaut = null): mixed
+    {
+        return self::$partage[$cle] ?? $defaut;
+    }
+
     /** @param array<string, mixed> $donnees variables disponibles dans le gabarit */
     public static function rendre(string $gabarit, array $donnees = [], string $titre = 'Souk Atlas',
                                   string $layout = 'layouts/principal'): string

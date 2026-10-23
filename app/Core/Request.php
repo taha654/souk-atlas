@@ -20,6 +20,8 @@ final class Request
         public readonly array $post,
         public readonly string $ip,
         public readonly bool $https,
+        /** @var array<string, string> en-têtes HTTP, noms en minuscules ("x-csrf-token") */
+        public readonly array $entetes = [],
     ) {
     }
 
@@ -38,7 +40,31 @@ final class Request
             $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
             // Même logique : HTTPS vu par Apache, pas l'en-tête X-Forwarded-Proto
             ($_SERVER['HTTPS'] ?? '') === 'on',
+            self::entetesDepuisServeur($_SERVER),
         );
+    }
+
+    /**
+     * PHP range les en-têtes dans $_SERVER sous la forme HTTP_X_CSRF_TOKEN :
+     * on les remet sous leur nom habituel, en minuscules ("x-csrf-token").
+     *
+     * @param array<string, mixed> $serveur
+     * @return array<string, string>
+     */
+    private static function entetesDepuisServeur(array $serveur): array
+    {
+        $entetes = [];
+        foreach ($serveur as $cle => $valeur) {
+            if (str_starts_with($cle, 'HTTP_') && is_string($valeur)) {
+                $entetes[strtolower(str_replace('_', '-', substr($cle, 5)))] = $valeur;
+            }
+        }
+        return $entetes;
+    }
+
+    public function entete(string $nom): ?string
+    {
+        return $this->entetes[strtolower($nom)] ?? null;
     }
 
     /** Champ de formulaire sous forme de texte nettoyé (jamais de tableau) */

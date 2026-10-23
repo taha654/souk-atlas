@@ -6,6 +6,10 @@ declare(strict_types=1);
 
 return [
     'env' => getenv('APP_ENV') ?: 'prod',
+    // Adresse publique du site, pour les liens dans les emails
+    'url' => rtrim(getenv('APP_URL') ?: 'http://localhost:8000', '/'),
+    // Emails simulés : écrits dans des fichiers .eml (voir app/Services/Mailer.php)
+    'dossier_mails' => dirname(__DIR__) . '/var/mails',
 
     'db' => [
         'utilisateur' => getenv('DB_USER') ?: '',

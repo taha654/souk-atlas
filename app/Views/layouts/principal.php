@@ -5,6 +5,7 @@
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Session;
+use App\Core\View;
 
 $moi = Auth::utilisateur();
 $flashs = Session::lireFlashs();
@@ -15,9 +16,12 @@ $flashs = Session::lireFlashs();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($titre) ?> · Souk Atlas</title>
+    <?php /* Jeton CSRF lu par le JavaScript pour ses requêtes POST (en-tête X-CSRF-Token) */ ?>
+    <meta name="csrf-token" content="<?= e(Csrf::jeton()) ?>">
     <link rel="stylesheet" href="/assets/css/style.css">
     <script type="module" src="/assets/js/validation.js"></script>
     <script type="module" src="/assets/js/recherche.js"></script>
+    <script type="module" src="/assets/js/confirmation.js"></script>
 </head>
 <body>
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
@@ -40,6 +44,11 @@ $flashs = Session::lireFlashs();
         <nav aria-label="Navigation principale">
             <ul class="menu">
                 <li><a href="/catalogue">Catalogue</a></li>
+                <?php $nbArticles = (int) View::partage('nb_articles', 0); ?>
+                <li><a href="/panier" class="lien-panier">Panier
+                    <?php /* Le badge est mis à jour par panier.js ; le texte caché le rend lisible */ ?>
+                    <span class="badge-panier" id="badge-panier" <?= $nbArticles === 0 ? 'hidden' : '' ?>><?= $nbArticles ?></span>
+                    <span class="visuellement-cache">(articles dans le panier)</span></a></li>
                 <?php if ($moi === null): ?>
                     <li><a href="/connexion">Connexion</a></li>
                     <li><a class="bouton bouton--clair" href="/inscription">Créer un compte</a></li>
@@ -51,6 +60,9 @@ $flashs = Session::lireFlashs();
                     <?php endif; ?>
                     <?php if ($moi['role'] === 'ADMIN'): ?>
                         <li><a href="/admin">Administration</a></li>
+                    <?php endif; ?>
+                    <?php if (in_array($moi['role'], ['CLIENT', 'VENDEUR'], true)): ?>
+                        <li><a href="/mes-commandes">Mes commandes</a></li>
                     <?php endif; ?>
                     <li><a href="/compte">Mon compte</a></li>
                     <li>

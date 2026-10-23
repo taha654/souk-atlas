@@ -3,7 +3,9 @@
 /** @var list<array{id: int, nom: string}> $chemin */
 /** @var list<array{nom: string, note: int, commentaire: string, date: string}> $avis */
 
+use App\Core\Csrf;
 use App\Core\View;
+use App\Services\Panier;
 
 $enPromo = $produit['pourcentage_promo'] > 0;
 $photos = $produit['photos'] !== [] ? $produit['photos'] : ['/assets/img/aucune-photo.svg'];
@@ -51,8 +53,22 @@ $photos = $produit['photos'] !== [] ? $produit['photos'] : ['/assets/img/aucune-
 
         <p class="carte-produit__stock <?= $produit['stock'] === 0 ? 'stock--epuise' : '' ?>"><?= e(texte_stock($produit['stock'])) ?></p>
 
-        <p><button type="button" class="bouton" disabled>Ajouter au panier</button>
-            <small class="facultatif">Le panier arrive à l'étape 4.</small></p>
+        <?php if ($produit['stock'] > 0): ?>
+            <?php /* Sans JS : POST classique puis retour sur la fiche. Avec JS (panier.js) :
+                     ajout sans rechargement, badge du panier mis à jour */ ?>
+            <form method="post" action="/panier/ajouter" class="ajout-panier" data-panier-ajout>
+                <?= Csrf::champ() ?>
+                <input type="hidden" name="id_produit" value="<?= e($produit['id']) ?>">
+                <input type="hidden" name="retour" value="/produit/<?= e($produit['id']) ?>">
+                <label for="quantite">Quantité</label>
+                <input id="quantite" name="quantite" type="number" min="1"
+                       max="<?= e(min($produit['stock'], Panier::QUANTITE_MAX)) ?>" value="1" inputmode="numeric">
+                <button type="submit" class="bouton">Ajouter au panier</button>
+            </form>
+            <p id="message-panier" class="message-panier" aria-live="polite"></p>
+        <?php else: ?>
+            <p><button type="button" class="bouton" disabled>Produit épuisé</button></p>
+        <?php endif; ?>
 
         <h2>Description</h2>
         <p><?= nl2br(e($produit['description'])) ?></p>
@@ -81,3 +97,4 @@ $photos = $produit['photos'] !== [] ? $produit['photos'] : ['/assets/img/aucune-
 </section>
 
 <script type="module" src="/assets/js/galerie.js"></script>
+<script type="module" src="/assets/js/panier.js"></script>

@@ -14,6 +14,7 @@ use App\Core\Config;
 use App\Core\Csrf;
 use App\Core\Database;
 use App\Core\Erreurs\AccesRefuse;
+use App\Core\Erreurs\ErreurMetier;
 use App\Core\Erreurs\MethodeNonAutorisee;
 use App\Core\Erreurs\NonConnecte;
 use App\Core\Erreurs\RouteIntrouvable;
@@ -22,6 +23,7 @@ use App\Core\Response;
 use App\Core\Router;
 use App\Core\Session;
 use App\Core\View;
+use App\Services\Panier;
 
 $dossierApp = dirname(__DIR__) . '/app';
 require $dossierApp . '/Core/Autoloader.php';
@@ -57,8 +59,16 @@ try {
 
     // CSRF : vérifié ici pour TOUS les POST, avant même de chercher la route.
     // Impossible d'oublier la vérification dans un contrôleur.
-    if ($request->methode === 'POST' && !Csrf::verifier($request->post[Csrf::CHAMP] ?? null)) {
+    // Le jeton vient du champ caché d'un formulaire, ou de l'en-tête X-CSRF-Token
+    // pour les appels fetch() du JavaScript (un autre site ne peut pas l'ajouter).
+    $jetonRecu = $request->post[Csrf::CHAMP] ?? $request->entete('X-CSRF-Token');
+    if ($request->methode === 'POST' && !Csrf::verifier(is_string($jetonRecu) ? $jetonRecu : null)) {
         throw new AccesRefuse('Jeton CSRF absent ou invalide');
+    }
+
+    // Nombre d'articles du panier, pour le badge de l'en-tête (pages HTML seulement)
+    if (!str_starts_with($request->chemin, '/api/')) {
+        View::partager('nb_articles', (new Panier($db, Auth::utilisateur()['id'] ?? null))->nbArticles());
     }
 
     $router = new Router();
@@ -82,6 +92,10 @@ try {
         ? 'Le formulaire a expiré ou ne vient pas de ce site. Rechargez la page et réessayez.'
         : 'Vous n\'avez pas accès à cette page.';
     $reponse = $pageErreur(403, 'Accès refusé', $message);
+} catch (ErreurMetier $erreur) {
+    // Filet de sécurité : une règle métier non interceptée par le contrôleur
+    // (stock insuffisant…) donne son message et un 422, pas une page 500
+    $reponse = $pageErreur(422, 'Action impossible', $erreur->getMessage());
 } catch (RouteIntrouvable) {
     $reponse = $pageErreur(404, 'Page introuvable', 'Cette page n\'existe pas ou a été déplacée.');
 } catch (MethodeNonAutorisee $erreur) {

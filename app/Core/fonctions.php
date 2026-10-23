@@ -71,3 +71,38 @@ function pages_a_afficher(int $page, int $pages): array
     }
     return $liste;
 }
+
+/**
+ * Applique une opération sur le panier (partagée par la page HTML et l'API JSON).
+ * $quantite est le texte reçu : vide = valeur par défaut (1 pour un ajout) ;
+ * invalide ("9999", "abc", "-1") = erreur. Surtout pas de valeur par défaut en
+ * silence : "9999" ne doit pas devenir "1".
+ */
+function appliquer_operation_panier(App\Services\Panier $panier, string $operation, ?int $idProduit, string $quantite): void
+{
+    if ($idProduit === null) {
+        throw new App\Core\Erreurs\ErreurMetier(App\Core\Erreurs\ErreurMetier::INTROUVABLE, 'Produit inconnu.');
+    }
+    $nombre = $quantite === '' ? null : filter_var($quantite, FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 0, 'max_range' => App\Services\Panier::QUANTITE_MAX]]);
+    if ($nombre === false || ($operation === 'modifier' && $nombre === null)) {
+        throw new App\Core\Erreurs\ErreurMetier(App\Core\Erreurs\ErreurMetier::QUANTITE_INVALIDE,
+            'Quantité invalide (0 à ' . App\Services\Panier::QUANTITE_MAX . ').');
+    }
+    match ($operation) {
+        'ajouter' => $panier->ajouter($idProduit, $nombre ?? 1),
+        'modifier' => $panier->modifier($idProduit, $nombre),
+        'retirer' => $panier->retirer($idProduit),
+        default => throw new App\Core\Erreurs\ErreurMetier(App\Core\Erreurs\ErreurMetier::DONNEE_INVALIDE, 'Opération inconnue.'),
+    };
+}
+
+/**
+ * Total TTC d'une ligne, pour l'affichage : prix unitaire TTC (calculé en base)
+ * x quantité. Le total de la commande, lui, vient toujours de la base (TVA
+ * arrondie par boutique) : la somme des lignes peut différer d'un centime.
+ */
+function total_ligne_ttc(array $ligne): float
+{
+    return round($ligne['prix_unitaire_ttc'] * $ligne['quantite'], 2);
+}

@@ -97,6 +97,12 @@ final class Utilisateur
         );
     }
 
+    /** Téléphone marocain : 0X XX XX XX XX ou +212 X XX XX XX XX (X de 5 à 7) */
+    public static function telephoneValide(string $telephone): bool
+    {
+        return preg_match('/^(\+212\s?|0)[5-7](\s?\d{2}){4}$/', $telephone) === 1;
+    }
+
     /**
      * Validation du formulaire d'inscription (fonction pure, sans base : testable seule).
      * Renvoie les erreurs par champ ; un tableau vide signifie "tout est valide".
@@ -118,8 +124,7 @@ final class Utilisateur
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false || strlen($email) > 254) {
             $erreurs['email'] = 'Adresse email invalide.';
         }
-        // Téléphone marocain facultatif : 0X XX XX XX XX ou +212 X XX XX XX XX
-        if ($telephone !== '' && preg_match('/^(\+212\s?|0)[5-7](\s?\d{2}){4}$/', $telephone) !== 1) {
+        if ($telephone !== '' && !self::telephoneValide($telephone)) {
             $erreurs['telephone'] = 'Numéro attendu : 06 12 34 56 78 ou +212 6 12 34 56 78.';
         }
         if (!in_array($champs['role'] ?? '', ['CLIENT', 'VENDEUR'], true)) {

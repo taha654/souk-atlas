@@ -10,6 +10,7 @@ use App\Core\Erreurs\ErreurMetier;
 use App\Core\Response;
 use App\Core\Session;
 use App\Models\Utilisateur;
+use App\Services\Panier;
 
 final class AuthController extends Controller
 {
@@ -51,8 +52,10 @@ final class AuthController extends Controller
         if ($erreurs === []) {
             try {
                 $id = (new Utilisateur($this->db))->creer($valeurs, $motDePasse);
+                $refus = (new Panier($this->db, $id))->fusionnerDepuisSession();
                 $this->db->valider();
                 Auth::connecter($id);
+                self::signalerRefus($refus);
                 Session::flash('succes', 'Bienvenue sur Souk Atlas, ' . $valeurs['nom'] . ' !');
                 return $this->rediriger(Auth::accueilDuRole($valeurs['role']));
             } catch (ErreurMetier $erreur) {
@@ -131,11 +134,22 @@ final class AuthController extends Controller
         }
         $modele->enregistrerTentative($email, $ip, true);
         $modele->enregistrerConnexion($id);
+        // Le panier rempli avant la connexion rejoint le panier du compte
+        $refus = (new Panier($this->db, $id))->fusionnerDepuisSession();
         $this->db->valider();
 
         Auth::connecter($id);
+        self::signalerRefus($refus);
         Session::flash('succes', 'Bonjour ' . $compte['NOM'] . ' !');
         return $this->rediriger($retour !== '' ? $retour : Auth::accueilDuRole($compte['ROLE']));
+    }
+
+    /** @param list<string> $refus produits du panier de session non repris (stock…) */
+    private static function signalerRefus(array $refus): void
+    {
+        foreach ($refus as $message) {
+            Session::flash('erreur', 'Panier : ' . $message);
+        }
     }
 
     // ------------------------------------------------------------------ déconnexion
