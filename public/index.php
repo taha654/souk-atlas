@@ -1,5 +1,5 @@
 <?php
-// Étape 0 : page « Hello » qui vérifie la chaîne complète navigateur → PHP → Oracle.
+// Page de vérification : la chaîne complète navigateur → PHP → Oracle fonctionne.
 // Ce fichier deviendra le contrôleur frontal à l'étape 2.
 
 declare(strict_types=1);
@@ -20,12 +20,18 @@ $connexion = @oci_connect(getenv('DB_USER'), getenv('DB_PASSWORD'), getenv('DB_D
 if ($connexion === false) {
     $erreur = oci_error()['message'] ?? 'Connexion impossible';
 } else {
-    $requete = oci_parse($connexion, 'SELECT message FROM hello WHERE id = :id');
-    $id = 1;
-    oci_bind_by_name($requete, ':id', $id); // variable liée, jamais de concaténation
+    // Étape 1 : le vrai schéma remplace la table HELLO de l'étape 0
+    $requete = oci_parse($connexion,
+        "SELECT (SELECT COUNT(*) FROM produit WHERE statut = 'ACTIF') AS produits,
+                (SELECT COUNT(*) FROM annonce WHERE statut = 'EN_LIGNE') AS annonces,
+                pkg_catalogue.chemin_categorie(:id_categorie) AS chemin
+           FROM dual");
+    $idCategorie = 3;
+    oci_bind_by_name($requete, ':id_categorie', $idCategorie); // variable liée, jamais de concaténation
     oci_execute($requete);
     $ligne = oci_fetch_assoc($requete);
-    $message = $ligne['MESSAGE'] ?? '(table vide)';
+    $message = sprintf('%d produits en vente, %d annonces en ligne. Catégorie n°3 : %s',
+        $ligne['PRODUITS'], $ligne['ANNONCES'], $ligne['CHEMIN']);
 
     $requete = oci_parse($connexion, 'SELECT banner_full FROM v$version');
     oci_execute($requete);

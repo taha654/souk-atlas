@@ -9,6 +9,8 @@ services:
       # L'image crée cet utilisateur dans la base FREEPDB1 au premier démarrage
       APP_USER: ${APP_USER}
       APP_USER_PASSWORD: ${APP_USER_PASSWORD}
+      # SYSDATE suit l'heure du système : on le règle sur l'heure du Maroc
+      TZ: Africa/Casablanca
     ports:
       - "${ORACLE_PORT:-1522}:1521"
     volumes:
@@ -16,6 +18,8 @@ services:
       - oracle-data:/opt/oracle/oradata
       # Scripts exécutés une seule fois, quand la base est créée
       - ./docker/oracle/init:/container-entrypoint-initdb.d:ro
+      # Scripts SQL du projet (installer.sh, tests…)
+      - ./database:/opt/souk/database:ro
     healthcheck:
       # Script fourni par l'image : réussit quand la base accepte les connexions
       test: ["CMD", "healthcheck.sh"]
