@@ -23,6 +23,7 @@ use App\Core\Response;
 use App\Core\Router;
 use App\Core\Session;
 use App\Core\View;
+use App\Models\Messagerie;
 use App\Services\Panier;
 
 $dossierApp = dirname(__DIR__) . '/app';
@@ -69,6 +70,9 @@ try {
     // Nombre d'articles du panier, pour le badge de l'en-tête (pages HTML seulement)
     if (!str_starts_with($request->chemin, '/api/')) {
         View::partager('nb_articles', (new Panier($db, Auth::utilisateur()['id'] ?? null))->nbArticles());
+        if (Auth::aLeRole('CLIENT', 'VENDEUR')) {
+            View::partager('nb_non_lus', (new Messagerie($db))->nbNonLus(Auth::utilisateur()['id']));
+        }
     }
 
     $router = new Router();

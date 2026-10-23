@@ -54,6 +54,29 @@ return static function (Router $router): void {
     $router->post('/commande/{numero}/annuler', 'CommandeController@annuler');
     $router->post('/produit/{id}/avis', 'AvisController@deposer');
 
+    // Petites annonces
+    $router->get('/annonces', 'AnnonceController@index');
+    $router->get('/annonces/nouvelle', 'AnnonceController@nouvelle');
+    $router->post('/annonces', 'AnnonceController@publier');
+    $router->get('/annonce/{id}', 'AnnonceController@fiche');
+    $router->post('/annonce/{id}/favori', 'AnnonceController@basculerFavori');
+    $router->post('/annonce/{id}/contacter', 'AnnonceController@contacter');
+    $router->post('/annonce/{id}/signaler', 'AnnonceController@signaler');
+    $router->get('/mes-annonces', 'AnnonceController@mesAnnonces');
+    $router->get('/mes-annonces/{id}', 'AnnonceController@edition');
+    $router->post('/mes-annonces/{id}', 'AnnonceController@modifier');
+    $router->post('/mes-annonces/{id}/photos', 'AnnonceController@ajouterPhoto');
+    $router->post('/mes-annonces/{id}/photos/{photo}/supprimer', 'AnnonceController@supprimerPhoto');
+    $router->post('/mes-annonces/{id}/{action}', 'AnnonceController@action');
+    $router->get('/favoris', 'AnnonceController@favoris');
+
+    // Messagerie
+    $router->get('/messages', 'MessagerieController@index');
+    $router->get('/messages/{id}', 'MessagerieController@conversation');
+    $router->post('/messages/{id}', 'MessagerieController@envoyer');
+    $router->get('/api/messages/{id}', 'MessagerieController@apiNouveaux');
+    $router->post('/api/messages/{id}', 'MessagerieController@apiEnvoyer');
+
     // API JSON (appelée par le JavaScript)
     $router->get('/api/panier', 'Api\\PanierApiController@etat');
     $router->post('/api/panier', 'Api\\PanierApiController@operation');

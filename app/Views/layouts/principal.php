@@ -44,6 +44,7 @@ $flashs = Session::lireFlashs();
         <nav aria-label="Navigation principale">
             <ul class="menu">
                 <li><a href="/catalogue">Catalogue</a></li>
+                <li><a href="/annonces">Annonces</a></li>
                 <?php $nbArticles = (int) View::partage('nb_articles', 0); ?>
                 <li><a href="/panier" class="lien-panier">Panier
                     <?php /* Le badge est mis à jour par panier.js ; le texte caché le rend lisible */ ?>
@@ -62,7 +63,15 @@ $flashs = Session::lireFlashs();
                         <li><a href="/admin">Administration</a></li>
                     <?php endif; ?>
                     <?php if (in_array($moi['role'], ['CLIENT', 'VENDEUR'], true)): ?>
-                        <li><a href="/mes-commandes">Mes commandes</a></li>
+                        <?php $nonLus = (int) View::partage('nb_non_lus', 0); ?>
+                        <li><a href="/messages">Messages<?php if ($nonLus > 0): ?>
+                            <span class="badge-panier"><?= $nonLus ?></span><span class="visuellement-cache"> non lu(s)</span><?php endif; ?></a></li>
+                        <li><details class="menu-deroulant"><summary>Mon espace</summary>
+                            <ul>
+                                <li><a href="/mes-commandes">Mes commandes</a></li>
+                                <li><a href="/mes-annonces">Mes annonces</a></li>
+                                <li><a href="/favoris">Mes favoris</a></li>
+                            </ul></details></li>
                     <?php endif; ?>
                     <li><a href="/compte">Mon compte</a></li>
                     <li>
