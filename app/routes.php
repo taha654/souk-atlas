@@ -54,6 +54,7 @@ return static function (Router $router): void {
     $router->post('/admin/promotions', 'AdminController@creerPromotion');
     $router->post('/admin/promotions/{id}/desactiver', 'AdminController@desactiverPromotion');
     $router->get('/admin/journal', 'AdminController@journal');
+    $router->post('/admin/recommandations', 'AdminController@recalculerRecommandations');
 
     // Catalogue
     $router->get('/catalogue', 'CatalogueController@index');

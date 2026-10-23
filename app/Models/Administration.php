@@ -21,9 +21,21 @@ final class Administration
                     (SELECT COUNT(*) FROM signalement WHERE statut = 'OUVERT') AS signalements,
                     (SELECT COUNT(*) FROM utilisateur) AS utilisateurs,
                     (SELECT COUNT(*) FROM produit WHERE statut = 'ACTIF') AS produits,
-                    (SELECT COUNT(*) FROM annonce WHERE statut = 'EN_LIGNE') AS annonces_en_ligne
+                    (SELECT COUNT(*) FROM annonce WHERE statut = 'EN_LIGNE') AS annonces_en_ligne,
+                    -- Score >= 60 calculé par le moteur C++, commande pas encore expédiée
+                    (SELECT COUNT(*) FROM commande
+                      WHERE score_risque >= 60 AND statut IN ('EN_ATTENTE', 'PAYEE')) AS commandes_risquees
                FROM dual");
         return array_map('intval', array_change_key_case($l, CASE_LOWER));
+    }
+
+    /** @return array{paires: int, produits: int, age_heures: float|null} */
+    public function etatRecommandations(): array
+    {
+        $l = $this->db->ligne('SELECT COUNT(*) AS paires, COUNT(DISTINCT id_produit) AS produits,
+                                      pkg_catalogue.age_recommandations AS age FROM recommandation');
+        return ['paires' => (int) $l['PAIRES'], 'produits' => (int) $l['PRODUITS'],
+                'age_heures' => $l['AGE'] === null ? null : (float) $l['AGE']];
     }
 
     /** Graphiques du tableau de bord global (PKG_STATS sans filtre de boutique) @return array<string, mixed> */

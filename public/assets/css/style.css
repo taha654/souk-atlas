@@ -154,6 +154,8 @@ a { color: var(--bleu); }
     list-style: none; margin: 0; padding: 0;
     display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;
 }
+.recommandations { margin: 1.5rem 0; }
+.recommandations h2 { font-size: 1.25rem; margin: 0 0 0.75rem; }
 .grille-produits[aria-busy="true"] { opacity: 0.5; transition: opacity 0.2s; }
 .carte-produit__lien {
     display: flex; flex-direction: column; gap: 0.25rem; height: 100%;

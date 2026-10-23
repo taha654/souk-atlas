@@ -5,6 +5,7 @@
 
 use App\Core\View;
 use App\Models\Commande;
+use App\Models\CommandeVendeur;
 ?>
 <?= View::fragment('partials/menu_vendeur', ['actif' => '/vendeur/commandes']) ?>
 
@@ -36,7 +37,10 @@ use App\Models\Commande;
                     <td><?= e($c['articles']) ?></td>
                     <td><?= e(format_prix($c['total_ttc'])) ?></td>
                     <td><?= $c['mode_paiement'] === 'CARTE' ? 'Carte' : 'À la livraison' ?></td>
-                    <td><span class="statut statut--<?= e(strtolower($c['statut'])) ?>"><?= e(Commande::STATUTS[$c['statut']]) ?></span></td>
+                    <td><span class="statut statut--<?= e(strtolower($c['statut'])) ?>"><?= e(Commande::STATUTS[$c['statut']]) ?></span>
+                        <?php if (($c['score_risque'] ?? 0) >= CommandeVendeur::SEUIL_RISQUE): ?>
+                            <span class="statut statut--refusee" title="Score de risque <?= e($c['score_risque']) ?>/100">À vérifier</span>
+                        <?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>
             </tbody>

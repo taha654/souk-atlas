@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Config;
 use App\Core\Controller;
 use App\Core\Erreurs\RouteIntrouvable;
 use App\Core\Response;
 use App\Models\Categorie;
 use App\Models\Produit;
+use App\Services\Recommandations;
 
 final class ProduitController extends Controller
 {
@@ -25,6 +27,9 @@ final class ProduitController extends Controller
             'produit' => $produit,
             'chemin' => (new Categorie($this->db))->chemin($produit['id_categorie']),
             'avis' => $modele->avis($produit['id']),
+            // Calculées par le moteur C++ (étape 8)
+            'recommandations' => (new Recommandations($this->db, $this->moteur(),
+                (float) Config::get('moteur')['recommandations_heures']))->pour($produit['id']),
         ], $produit['nom']);
     }
 }

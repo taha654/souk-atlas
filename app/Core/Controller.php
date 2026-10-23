@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use App\Services\CppEngine;
+
 /**
  * Classe mère des contrôleurs : donne accès à la requête et à la base, et
  * quelques raccourcis pour construire une réponse.
@@ -25,6 +27,13 @@ abstract class Controller
     protected function rediriger(string $url): Response
     {
         return Response::redirection($url);
+    }
+
+    /** Le moteur C++, configuré dans app/config.php */
+    protected function moteur(): CppEngine
+    {
+        $config = Config::get('moteur');
+        return new CppEngine($config['executable'], (float) $config['delai_secondes']);
     }
 
     /** Champ de formulaire entier entre $min et $max, ou null s'il est invalide */

@@ -15,6 +15,7 @@ use App\Models\Commande;
 use App\Models\Utilisateur;
 use App\Services\Mailer;
 use App\Services\Panier;
+use App\Services\ScoreRisque;
 
 final class CommandeController extends Controller
 {
@@ -64,6 +65,8 @@ final class CommandeController extends Controller
                 $this->db->annuler();
                 return $this->apresRefus($erreur, $moi['id'], $reaffichage);
             }
+            // Après la validation : un moteur en panne ne doit pas bloquer la commande
+            (new ScoreRisque($this->db, $this->moteur()))->achat($reference);
             $this->envoyerConfirmation($reference, $moi);
             Session::flash('succes', 'Merci ! Votre commande est enregistrée.');
             return $this->rediriger('/achat/' . rawurlencode($reference));

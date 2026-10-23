@@ -13,6 +13,8 @@ use App\Models\Administration;
 use App\Models\Categorie;
 use App\Models\Moderation;
 use App\Models\Promotion;
+use App\Services\ErreurMoteur;
+use App\Services\Recommandations;
 
 /**
  * Espace administrateur. Chaque action commence par admin() (rôle ADMIN exigé
@@ -29,6 +31,7 @@ final class AdminController extends Controller
         return $this->vue('admin/index', [
             'aTraiter' => $administration->aTraiter(),
             'stats' => $administration->statistiques(30),
+            'recommandations' => $administration->etatRecommandations(),
         ], 'Administration');
     }
 
@@ -210,6 +213,20 @@ final class AdminController extends Controller
         $this->admin();
         return $this->executer('/admin/promotions',
             fn () => (new Promotion($this->db))->desactiver($this->id($id)), 'Promotion arrêtée.');
+    }
+
+    /** POST /admin/recommandations : nouveau calcul immédiat par le moteur C++ */
+    public function recalculerRecommandations(): Response
+    {
+        $this->admin();
+        try {
+            $nb = (new Recommandations($this->db, $this->moteur()))->recalculer();
+            Session::flash('succes', "Recommandations recalculées par le moteur C++ : $nb paire(s).");
+        } catch (ErreurMoteur $erreur) {
+            $this->db->annuler();
+            Session::flash('erreur', 'Moteur C++ indisponible : ' . $erreur->getMessage());
+        }
+        return $this->rediriger('/admin');
     }
 
     public function journal(): Response

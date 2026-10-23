@@ -4,6 +4,7 @@
 use App\Core\Csrf;
 use App\Core\View;
 use App\Models\Commande;
+use App\Models\CommandeVendeur;
 ?>
 <?= View::fragment('partials/menu_vendeur', ['actif' => '/vendeur/commandes']) ?>
 
@@ -16,6 +17,10 @@ use App\Models\Commande;
         <p>Passée le <?= e(date_fr($commande['date'], true)) ?> ·
             <?= $commande['mode_paiement'] === 'CARTE' ? 'payée par carte' : 'paiement à la livraison' ?>
             (<?= e(strtolower($commande['statut_paiement'] ?? '')) ?>)</p>
+        <?php if (($commande['score_risque'] ?? 0) >= CommandeVendeur::SEUIL_RISQUE): ?>
+            <p class="alerte alerte--erreur">Commande inhabituelle (risque <?= e($commande['score_risque']) ?>/100,
+                évalué par notre moteur d'analyse) : confirmez-la par téléphone avec le client avant de l'expédier.</p>
+        <?php endif; ?>
         <table class="tableau-panier">
             <thead><tr><th scope="col">Article</th><th scope="col">Qté</th><th scope="col">Prix HT</th><th scope="col">Total HT</th></tr></thead>
             <tbody>

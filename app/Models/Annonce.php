@@ -114,11 +114,17 @@ final class Annonce
     }
 
     /** @param array{id_categorie: int, titre: string, description: string, prix: float, ville: string} $v */
-    public function modifier(int $id, int $idUtilisateur, array $v): void
+    public function modifier(int $id, int $idUtilisateur, array $v, ?int $scoreRisque = null): void
     {
         $p = ['id' => $id, 'u' => $idUtilisateur, 'cat' => $v['id_categorie'], 'titre' => $v['titre'],
-              'desc' => $v['description'], 'prix' => $v['prix'], 'ville' => $v['ville']];
-        $this->db->appeler('BEGIN pkg_annonce.modifier(:id, :u, :cat, :titre, :desc, :prix, :ville); END;', $p);
+              'desc' => $v['description'], 'prix' => $v['prix'], 'ville' => $v['ville'], 'score' => $scoreRisque];
+        $this->db->appeler('BEGIN pkg_annonce.modifier(:id, :u, :cat, :titre, :desc, :prix, :ville, :score); END;', $p);
+    }
+
+    public function statut(int $id): ?string
+    {
+        $statut = $this->db->valeur('SELECT statut FROM annonce WHERE id = :id', ['id' => $id]);
+        return $statut === null ? null : (string) $statut;
     }
 
     /** $action : renouveler | marquer_vendue */

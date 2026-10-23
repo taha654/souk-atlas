@@ -113,6 +113,22 @@ final class Database
     }
 
     /**
+     * Comme appeler(), avec en plus des TABLEAUX PHP liés à des collections
+     * PL/SQL "TABLE OF NUMBER INDEX BY PLS_INTEGER" (oci_bind_array_by_name) :
+     * des centaines de valeurs passent en UN seul appel, que le package insère
+     * d'un coup avec FORALL.
+     *
+     *   $db->appelerAvecTableaux('BEGIN pkg.proc(:ids, :scores); END;', ['ids' => [1, 2], 'scores' => [0.5, 0.9]]);
+     *
+     * @param array<string, list<int|float>> $tableaux
+     * @param array<string, scalar|null> $parametres
+     */
+    public function appelerAvecTableaux(string $plsql, array $tableaux, array &$parametres = []): void
+    {
+        oci_free_statement($this->executer($plsql, $parametres, $tableaux));
+    }
+
+    /**
      * Lit toutes les lignes d'un SYS_REFCURSOR renvoyé par une fonction de package.
      * Le curseur est ouvert CÔTÉ ORACLE ; PHP reçoit une "poignée" (oci_new_cursor)
      * qu'il exécute puis parcourt comme une requête ordinaire.
@@ -166,9 +182,10 @@ final class Database
 
     /**
      * @param array<string, scalar|null> $parametres
+     * @param array<string, list<int|float>> $tableaux
      * @return resource
      */
-    private function executer(string $sql, array &$parametres)
+    private function executer(string $sql, array &$parametres, array $tableaux = [])
     {
         $requete = oci_parse($this->connexion, $sql);
         if ($requete === false) {
@@ -181,6 +198,14 @@ final class Database
             oci_bind_by_name($requete, ':' . ltrim((string) $nom, ':'), $valeur, 4000);
         }
         unset($valeur); // casse la référence laissée par le foreach
+
+        foreach ($tableaux as $nom => &$valeurs) {
+            $valeurs = array_values(array_map('floatval', $valeurs));
+            // Taille maximale : au moins 1, même pour un tableau vide (exigence d'OCI8).
+            // SQLT_FLT : nombres à virgule, convertis par Oracle en NUMBER.
+            oci_bind_array_by_name($requete, ':' . $nom, $valeurs, max(1, count($valeurs)), -1, SQLT_FLT);
+        }
+        unset($valeurs);
 
         if (!@oci_execute($requete, OCI_NO_AUTO_COMMIT)) {
             $erreur = oci_error($requete) ?: ['code' => 0, 'message' => 'erreur inconnue'];

@@ -14,6 +14,7 @@ use App\Models\Annonce;
 use App\Models\Categorie;
 use App\Models\FiltresAnnonces;
 use App\Models\Messagerie;
+use App\Services\ScoreRisque;
 use App\Services\Upload;
 
 /** Petites annonces : liste publique, fiche, publication, gestion par l'auteur, favoris, signalement */
@@ -56,10 +57,16 @@ final class AnnonceController extends Controller
         [$valeurs, $erreurs] = Annonce::validerFormulaire($this->champs());
         if ($erreurs === []) {
             try {
-                // Score de risque : calculé par le moteur C++ à l'étape 8 (null pour l'instant)
-                $id = (new Annonce($this->db))->publier($moi['id'], $valeurs);
+                // Score de risque calculé par le moteur C++ ; PKG_ANNONCE décide du statut
+                $risque = (new ScoreRisque($this->db, $this->moteur()))->annonce($moi['id'], $valeurs);
+                $modele = new Annonce($this->db);
+                $id = $modele->publier($moi['id'], $valeurs, $risque['score'] ?? null);
                 $this->db->valider();
-                Session::flash('succes', 'Annonce publiée. Ajoutez des photos pour la rendre plus attractive.');
+                // On ne détaille PAS les raisons à l'auteur : ce serait apprendre aux
+                // fraudeurs à contourner les règles
+                Session::flash('succes', $modele->statut($id) === 'EN_MODERATION'
+                    ? 'Annonce enregistrée. Elle sera vérifiée par notre équipe avant sa mise en ligne.'
+                    : 'Annonce publiée. Ajoutez des photos pour la rendre plus attractive.');
                 return $this->rediriger('/mes-annonces/' . $id);
             } catch (ErreurMetier $erreur) {
                 $this->db->annuler();
@@ -94,9 +101,14 @@ final class AnnonceController extends Controller
         [$valeurs, $erreurs] = Annonce::validerFormulaire($this->champs());
         if ($erreurs === []) {
             try {
-                (new Annonce($this->db))->modifier($annonce['id'], Auth::utilisateur()['id'], $valeurs);
+                $moi = Auth::utilisateur();
+                $risque = (new ScoreRisque($this->db, $this->moteur()))->annonce($moi['id'], $valeurs);
+                $modele = new Annonce($this->db);
+                $modele->modifier($annonce['id'], $moi['id'], $valeurs, $risque['score'] ?? null);
                 $this->db->valider();
-                Session::flash('succes', 'Annonce enregistrée.');
+                Session::flash('succes', $annonce['statut'] === 'EN_LIGNE' && $modele->statut($annonce['id']) === 'EN_MODERATION'
+                    ? 'Annonce enregistrée. Elle sera vérifiée par notre équipe avant de revenir en ligne.'
+                    : 'Annonce enregistrée.');
                 return $this->rediriger('/mes-annonces/' . $annonce['id']);
             } catch (ErreurMetier $erreur) {
                 $this->db->annuler();

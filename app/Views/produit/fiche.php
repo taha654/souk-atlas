@@ -2,6 +2,7 @@
 /** @var array<string, mixed> $produit */
 /** @var list<array{id: int, nom: string}> $chemin */
 /** @var list<array{nom: string, note: int, commentaire: string, date: string}> $avis */
+/** @var list<array<string, mixed>> $recommandations produits calculés par le moteur C++ */
 
 use App\Core\Csrf;
 use App\Core\View;
@@ -74,6 +75,17 @@ $photos = $produit['photos'] !== [] ? $produit['photos'] : ['/assets/img/aucune-
         <p><?= nl2br(e($produit['description'])) ?></p>
     </section>
 </article>
+
+<?php if ($recommandations !== []): ?>
+    <section class="recommandations" aria-labelledby="titre-recommandations">
+        <h2 id="titre-recommandations">Souvent achetés ensemble</h2>
+        <ul class="grille-produits">
+            <?php foreach ($recommandations as $p): ?>
+                <?= View::fragment('partials/carte_produit', ['p' => $p]) ?>
+            <?php endforeach; ?>
+        </ul>
+    </section>
+<?php endif; ?>
 
 <section class="avis carte" aria-labelledby="titre-avis">
     <h2 id="titre-avis">Avis des clients (<?= e($produit['nb_avis']) ?>)</h2>

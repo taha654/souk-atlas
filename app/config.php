@@ -13,6 +13,15 @@ return [
     // Racine web : les photos envoyées vont dans public/uploads/…
     'dossier_public' => dirname(__DIR__) . '/public',
 
+    // Moteur C++ (cpp/engine), compilé dans l'image PHP : voir app/Services/CppEngine.php
+    'moteur' => [
+        'executable' => getenv('MOTEUR_CPP') ?: '/usr/local/bin/souk-moteur',
+        // Au-delà, le processus est tué : une page ne doit jamais attendre le moteur
+        'delai_secondes' => 3.0,
+        // Âge maximal des recommandations avant un nouveau calcul
+        'recommandations_heures' => 24,
+    ],
+
     'db' => [
         'utilisateur' => getenv('DB_USER') ?: '',
         'mot_de_passe' => getenv('DB_PASSWORD') ?: '',

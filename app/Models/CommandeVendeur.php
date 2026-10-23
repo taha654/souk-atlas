@@ -17,6 +17,7 @@ final class CommandeVendeur
     {
         $lignes = $this->db->lignes(
             'SELECT c.numero, c.statut, c.total_ttc, c.total_ht, c.mode_paiement, c.date_commande, c.ville_livraison,
+                    c.score_risque,
                     u.nom AS client,
                     (SELECT SUM(cl.quantite) FROM commande_ligne cl WHERE cl.id_commande = c.id) AS articles
                FROM commande c JOIN utilisateur u ON u.id = c.id_client
@@ -35,6 +36,7 @@ final class CommandeVendeur
             'ville' => $l['VILLE_LIVRAISON'],
             'client' => Produit::nomCourt($l['CLIENT']),
             'articles' => (int) $l['ARTICLES'],
+            'score_risque' => $l['SCORE_RISQUE'] === null ? null : (int) $l['SCORE_RISQUE'],
         ], $lignes);
     }
 
@@ -56,7 +58,7 @@ final class CommandeVendeur
             "SELECT c.id, c.numero, c.statut, c.total_ht, c.tva, c.total_ttc, c.mode_paiement,
                     c.adresse_livraison, c.ville_livraison, c.telephone_livraison, c.date_commande,
                     c.date_paiement, c.date_expedition, c.date_livraison, c.date_annulation,
-                    u.nom AS client, p.statut AS statut_paiement
+                    c.score_risque, u.nom AS client, p.statut AS statut_paiement
                FROM commande c JOIN utilisateur u ON u.id = c.id_client
                LEFT JOIN paiement p ON p.id_commande = c.id
               WHERE c.numero = :numero AND c.id_boutique = :boutique",
@@ -74,6 +76,8 @@ final class CommandeVendeur
             'total_ttc' => (float) $c['TOTAL_TTC'],
             'mode_paiement' => $c['MODE_PAIEMENT'],
             'statut_paiement' => $c['STATUT_PAIEMENT'],
+            // Calculé par le moteur C++ au moment de la commande (null : pas de score)
+            'score_risque' => $c['SCORE_RISQUE'] === null ? null : (int) $c['SCORE_RISQUE'],
             // Le vendeur a besoin de l'adresse pour expédier : c'est son seul usage
             'client' => $c['CLIENT'],
             'adresse' => $c['ADRESSE_LIVRAISON'],
@@ -89,6 +93,9 @@ final class CommandeVendeur
             'actions' => self::actionsPossibles($c['STATUT'], $c['MODE_PAIEMENT']),
         ];
     }
+
+    /** Même seuil que PKG_ANNONCE.c_seuil_moderation : au-delà, on vérifie avant d'expédier */
+    public const SEUIL_RISQUE = 60;
 
     public function changerStatut(int $idCommande, int $idBoutique, string $statut): void
     {

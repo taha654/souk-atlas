@@ -1,7 +1,9 @@
 <?php
 /** @var array<string, int> $aTraiter */
 /** @var array<string, mixed> $stats */
+/** @var array{paires: int, produits: int, age_heures: float|null} $recommandations */
 
+use App\Core\Csrf;
 use App\Core\View;
 ?>
 <?= View::fragment('partials/menu_admin', ['actif' => '/admin']) ?>
@@ -13,6 +15,7 @@ use App\Core\View;
         <a class="chiffre chiffre--lien" href="/admin/signalements"><strong><?= e($aTraiter['signalements']) ?></strong> signalement(s) ouvert(s)</a>
         <a class="chiffre chiffre--lien" href="/admin/moderation"><strong><?= e($aTraiter['annonces']) ?></strong> annonce(s) à vérifier</a>
         <a class="chiffre chiffre--lien" href="/admin/boutiques?statut=EN_ATTENTE"><strong><?= e($aTraiter['boutiques']) ?></strong> boutique(s) à valider</a>
+        <div class="chiffre"><strong><?= e($aTraiter['commandes_risquees']) ?></strong> commande(s) à risque non expédiée(s)</div>
     </div>
 </section>
 
@@ -53,5 +56,19 @@ use App\Core\View;
                 </table></details>
         </figure>
     </div>
+</section>
+<section class="carte" aria-labelledby="titre-moteur">
+    <h2 id="titre-moteur">Moteur C++ : « souvent achetés ensemble »</h2>
+    <p><?php if ($recommandations['age_heures'] === null): ?>
+        Jamais calculées : le premier visiteur d'une fiche produit lancera le calcul.
+    <?php else: ?>
+        <?= e($recommandations['paires']) ?> recommandation(s) pour <?= e($recommandations['produits']) ?> produit(s),
+        calculées il y a <?= e(number_format($recommandations['age_heures'], 1, ',', '')) ?> h
+        (nouveau calcul automatique toutes les 24 h).
+    <?php endif; ?></p>
+    <form method="post" action="/admin/recommandations">
+        <?= Csrf::champ() ?>
+        <button class="bouton bouton--secondaire" type="submit">Recalculer maintenant</button>
+    </form>
 </section>
 <script type="module" src="/assets/js/tableau-admin.js"></script>
