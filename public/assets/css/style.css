@@ -395,3 +395,7 @@ code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-siz
 /* ----- WebAssembly (étape 10) ----- */
 .suggestion__approchee { color: var(--texte-doux); font-size: 0.85em; font-style: italic; }
 .photo-allegee { font-size: 0.9rem; margin: 0.25rem 0 0.5rem; color: var(--succes); }
+
+/* ----- Accueil (étape 11) ----- */
+.vitrine { margin: 2rem 0; }
+.vitrine h2 { font-size: 1.3rem; margin: 0; }

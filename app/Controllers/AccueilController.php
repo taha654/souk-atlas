@@ -5,6 +5,10 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Response;
+use App\Models\Annonce;
+use App\Models\FiltresAnnonces;
+use App\Models\FiltresCatalogue;
+use App\Models\Produit;
 
 final class AccueilController extends Controller
 {
@@ -18,6 +22,13 @@ final class AccueilController extends Controller
                     (SELECT COUNT(*) FROM boutique WHERE statut = 'VALIDEE') AS boutiques
                FROM dual",
         );
-        return $this->vue('accueil/index', ['chiffres' => $chiffres]);
+        // Vitrine : les produits les mieux notés (en stock) et les annonces les plus récentes
+        $produits = (new Produit($this->db))->rechercher(new FiltresCatalogue(tri: 'note', enStock: true))['produits'];
+        $annonces = (new Annonce($this->db))->rechercher(new FiltresAnnonces())['annonces'];
+        return $this->vue('accueil/index', [
+            'chiffres' => $chiffres,
+            'produits' => array_slice($produits, 0, 4),
+            'annonces' => array_slice($annonces, 0, 4),
+        ]);
     }
 }
