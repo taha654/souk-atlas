@@ -90,6 +90,26 @@ BEGIN
     pkg_test.verifier_egal('nb_echecs_recents : les vieux échecs sont oubliés', 0,
                            pkg_utilisateur.nb_echecs_recents('amine.lahlou@exemple.ma', 15));
 
+    -- Par IP : un mot de passe essayé sur plusieurs emails différents
+    pkg_utilisateur.enregistrer_tentative('a@exemple.ma', '10.9.9.9', 0);
+    pkg_utilisateur.enregistrer_tentative('b@exemple.ma', '10.9.9.9', 0);
+    pkg_utilisateur.enregistrer_tentative('c@exemple.ma', '10.9.9.9', 0);
+    pkg_utilisateur.enregistrer_tentative('d@exemple.ma', '10.8.8.8', 0);
+    pkg_test.verifier_egal('nb_echecs_ip : 3 échecs depuis la même IP, emails différents', 3,
+                           pkg_utilisateur.nb_echecs_ip('10.9.9.9'));
+    pkg_test.verifier_egal('nb_echecs_ip : chaque email n''a qu''un échec', 1,
+                           pkg_utilisateur.nb_echecs_recents('a@exemple.ma'));
+
+    pkg_utilisateur.changer_hash(v_id, '$2y$12$nouveauhash');
+    SELECT mot_de_passe_hash INTO v_texte FROM utilisateur WHERE id = v_id;
+    pkg_test.verifier_egal('changer_hash : hash remplacé', '$2y$12$nouveauhash', v_texte);
+    BEGIN
+        pkg_utilisateur.changer_hash(999999, 'x');
+        pkg_test.echec('changer_hash : compte inexistant', 'aucune erreur levée');
+    EXCEPTION WHEN OTHERS THEN
+        pkg_test.verifier_erreur('changer_hash : compte inexistant', -20009, SQLCODE, SQLERRM);
+    END;
+
     -- Boutiques
     BEGIN
         pkg_utilisateur.creer_boutique(11, 'Boutique de client', NULL, 'Casablanca', v_id2);

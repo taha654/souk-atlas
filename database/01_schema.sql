@@ -44,6 +44,8 @@ CREATE TABLE tentative_connexion (
     CONSTRAINT ck_tentative_reussie CHECK (reussie IN (0, 1))
 );
 CREATE INDEX ix_tentative_email_date ON tentative_connexion (email, date_tentative);
+-- Limitation par IP : un attaquant qui essaie un mot de passe sur des milliers d'emails
+CREATE INDEX ix_tentative_ip_date ON tentative_connexion (adresse_ip, date_tentative);
 
 -- -----------------------------------------------------------------------------
 -- Marketplace : boutiques, catégories, produits

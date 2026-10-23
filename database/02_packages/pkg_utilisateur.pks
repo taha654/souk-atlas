@@ -25,10 +25,14 @@ CREATE OR REPLACE PACKAGE pkg_utilisateur AS
     -- Appelée après une connexion réussie
     PROCEDURE enregistrer_connexion(p_id IN utilisateur.id%TYPE);
 
-    -- Limitation des tentatives de connexion (étape 2)
+    -- Remplace le hash (PHP le recalcule quand password_needs_rehash le demande)
+    PROCEDURE changer_hash(p_id IN utilisateur.id%TYPE, p_hash IN utilisateur.mot_de_passe_hash%TYPE);
+
+    -- Limitation des tentatives de connexion : par email ET par adresse IP
     PROCEDURE enregistrer_tentative(
         p_email IN VARCHAR2, p_adresse_ip IN VARCHAR2, p_reussie IN NUMBER);
     FUNCTION nb_echecs_recents(p_email IN VARCHAR2, p_minutes IN NUMBER DEFAULT 15) RETURN NUMBER;
+    FUNCTION nb_echecs_ip(p_adresse_ip IN VARCHAR2, p_minutes IN NUMBER DEFAULT 15) RETURN NUMBER;
 
     -- Boutique d'un vendeur : créée EN_ATTENTE, validée ensuite par l'admin
     PROCEDURE creer_boutique(

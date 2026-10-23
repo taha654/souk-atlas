@@ -87,6 +87,25 @@ CREATE OR REPLACE PACKAGE BODY pkg_utilisateur AS
         RETURN v_nb;
     END nb_echecs_recents;
 
+    FUNCTION nb_echecs_ip(p_adresse_ip IN VARCHAR2, p_minutes IN NUMBER DEFAULT 15) RETURN NUMBER IS
+        v_nb NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_nb
+          FROM tentative_connexion
+         WHERE adresse_ip = p_adresse_ip
+           AND reussie = 0
+           AND date_tentative > SYSTIMESTAMP - NUMTODSINTERVAL(p_minutes, 'MINUTE');
+        RETURN v_nb;
+    END nb_echecs_ip;
+
+    PROCEDURE changer_hash(p_id IN utilisateur.id%TYPE, p_hash IN utilisateur.mot_de_passe_hash%TYPE) IS
+    BEGIN
+        UPDATE utilisateur SET mot_de_passe_hash = p_hash WHERE id = p_id;
+        IF SQL%ROWCOUNT = 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_compte_introuvable, 'Compte introuvable : ' || p_id);
+        END IF;
+    END changer_hash;
+
     PROCEDURE creer_boutique(
         p_id_vendeur   IN  boutique.id_vendeur%TYPE,
         p_nom          IN  boutique.nom%TYPE,
