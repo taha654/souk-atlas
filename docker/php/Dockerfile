@@ -20,6 +20,12 @@ RUN apt-get update \
 RUN docker-php-ext-configure oci8 --with-oci8=instantclient,/opt/oracle/instantclient \
     && docker-php-ext-install oci8
 
+# 2 bis. Fuseaux horaires à jour : PHP embarque sa propre copie (figée à la
+#    compilation), plus ancienne que celle du système. Pour le Maroc, elle donnait
+#    une heure de décalage avec Oracle. L'extension timezonedb la remplace.
+# Version volontairement non figée : pour des fuseaux horaires, la plus récente est la bonne.
+RUN pecl install timezonedb && docker-php-ext-enable timezonedb
+
 # 3. Apache : seul le dossier public/ est exposé sur le web ;
 #    app/, database/, cpp/… restent inaccessibles depuis le navigateur.
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
@@ -32,3 +38,12 @@ RUN a2enconf souk
 # Configuration PHP : base "development", puis nos réglages (sessions, fuseau horaire)
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 COPY souk.ini "$PHP_INI_DIR/conf.d/zz-souk.ini"
+
+# www-data (utilisateur SANS privilèges qui exécute Apache et PHP) prend l'uid et
+# le gid de l'utilisateur de la machine. Les fichiers écrits par le site dans le
+# dossier monté (emails simulés, photos) lui appartiennent, sans sudo.
+# (Mettre "#1000" dans APACHE_RUN_USER ne marche pas : sans compte uid 1000 dans
+#  le conteneur, Apache ne peut pas quitter root et garde ses processus en root.)
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+RUN groupmod -o -g "$HOST_GID" www-data && usermod -o -u "$HOST_UID" -g "$HOST_GID" www-data
