@@ -99,6 +99,27 @@ final class Request
         return is_string($valeur) ? $valeur : '';
     }
 
+    /**
+     * Corps JSON de la requête (API de la console), décodé en tableau.
+     * null si le corps est absent, trop gros ou n'est pas un objet JSON.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function json(int $tailleMax = 2_000_000): ?array
+    {
+        // php://input : le corps brut, que PHP ne décode pas dans $_POST pour du JSON
+        $corps = file_get_contents('php://input', false, null, 0, $tailleMax + 1);
+        if ($corps === false || $corps === '' || strlen($corps) > $tailleMax) {
+            return null;
+        }
+        try {
+            $donnees = json_decode($corps, true, 32, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        return is_array($donnees) && !array_is_list($donnees) ? $donnees : null;
+    }
+
     public function parametre(string $nom): string
     {
         $valeur = $this->query[$nom] ?? '';

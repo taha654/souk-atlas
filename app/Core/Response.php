@@ -38,6 +38,12 @@ final class Response
         );
     }
 
+    /** Copie de la réponse avec un en-tête en plus (l'objet reste immuable) */
+    public function avecEntete(string $nom, string $valeur): self
+    {
+        return new self($this->corps, $this->statut, [$nom => $valeur] + $this->entetes);
+    }
+
     public function envoyer(): void
     {
         http_response_code($this->statut);

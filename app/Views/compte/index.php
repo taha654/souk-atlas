@@ -14,4 +14,7 @@ $roles = ['CLIENT' => 'Particulier', 'VENDEUR' => 'Vendeur professionnel', 'ADMI
         <dt>Membre depuis</dt> <dd><?= e(date_fr($compte['DATE_CREATION'])) ?></dd>
         <dt>Dernière connexion</dt> <dd><?= e(date_fr($compte['DATE_DERNIERE_CONNEXION'], true)) ?></dd>
     </dl>
+    <?php if (in_array($compte['ROLE'], ['VENDEUR', 'ADMIN'], true)): ?>
+        <p><a href="/compte/jetons">Jetons d'accès pour l'outil en ligne de commande</a></p>
+    <?php endif; ?>
 </section>

@@ -62,8 +62,13 @@ try {
     // Impossible d'oublier la vérification dans un contrôleur.
     // Le jeton vient du champ caché d'un formulaire, ou de l'en-tête X-CSRF-Token
     // pour les appels fetch() du JavaScript (un autre site ne peut pas l'ajouter).
+    // Exception : l'API de la console C++ (/api/console/…). Elle n'accepte QUE
+    // l'en-tête "Authorization: Bearer <jeton>", jamais le cookie de session ;
+    // or une attaque CSRF repose justement sur le cookie, que le navigateur
+    // envoie tout seul. Un autre site ne peut pas ajouter cet en-tête.
     $jetonRecu = $request->post[Csrf::CHAMP] ?? $request->entete('X-CSRF-Token');
-    if ($request->methode === 'POST' && !Csrf::verifier(is_string($jetonRecu) ? $jetonRecu : null)) {
+    $apiConsole = str_starts_with($request->chemin, '/api/console/');
+    if ($request->methode === 'POST' && !$apiConsole && !Csrf::verifier(is_string($jetonRecu) ? $jetonRecu : null)) {
         throw new AccesRefuse('Jeton CSRF absent ou invalide');
     }
 

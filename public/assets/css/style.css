@@ -387,3 +387,7 @@ textarea { width: 100%; padding: 0.6rem; font: inherit; border: 1px solid var(--
 .arbre-admin .niveau-2 { padding-left: 2.5rem; }
 .arbre-admin .niveau-3 { padding-left: 4rem; }
 .avis--masque { opacity: 0.6; }
+
+/* ----- Jetons d'API (étape 9) ----- */
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.9em; overflow-wrap: anywhere; }
+.jeton { width: 100%; padding: 0.5rem; border: 1px solid var(--bordure); border-radius: var(--rayon); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.85rem; }

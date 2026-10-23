@@ -44,6 +44,22 @@ final class Categorie
         ], $lignes);
     }
 
+    /** Identifiant d'une catégorie désignée par son nom (sans casse ni accents), ou null */
+    public function parNom(string $nom): ?int
+    {
+        if ($nom === '') {
+            return null;
+        }
+        $id = $this->db->valeur('SELECT pkg_catalogue.categorie_par_nom(:nom) FROM DUAL', ['nom' => mb_substr($nom, 0, 100)]);
+        return $id === null ? null : (int) $id;
+    }
+
+    /** L'identifiant s'il existe, sinon null */
+    public function existe(int $id): ?int
+    {
+        return $this->db->valeur('SELECT id FROM categorie WHERE id = :id', ['id' => $id]) === null ? null : $id;
+    }
+
     public function creer(string $nom, ?int $idParent): int
     {
         $p = ['nom' => $nom, 'parent' => $idParent, 'id' => null];

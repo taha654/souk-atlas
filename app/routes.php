@@ -16,6 +16,17 @@ return static function (Router $router): void {
     $router->post('/deconnexion', 'AuthController@deconnecter');
 
     $router->get('/compte', 'CompteController@index');
+    $router->get('/compte/jetons', 'CompteController@jetons');
+    $router->post('/compte/jetons', 'CompteController@creerJeton');
+    $router->post('/compte/jetons/{id}/revoquer', 'CompteController@revoquerJeton');
+
+    // API de l'outil console C++ : authentification par jeton (Authorization: Bearer)
+    $router->get('/api/console/moi', 'Api\\ConsoleApiController@moi');
+    $router->get('/api/console/categories', 'Api\\ConsoleApiController@categories');
+    $router->post('/api/console/produits', 'Api\\ConsoleApiController@importerProduits');
+    $router->get('/api/console/signalements', 'Api\\ConsoleApiController@signalements');
+    $router->post('/api/console/signalements/{id}', 'Api\\ConsoleApiController@traiterSignalement');
+    $router->get('/api/console/rapport', 'Api\\ConsoleApiController@rapport');
     // Espace vendeur (Auth::exigerRole('VENDEUR') dans chaque action)
     $router->get('/vendeur', 'VendeurController@index');
     $router->get('/vendeur/boutique', 'VendeurController@formulaireBoutique');
