@@ -1,5 +1,5 @@
 # Un exécutable par fichier de test ; CTest les lance tous (ctest --output-on-failure)
-foreach(nom test_json test_texte_graphe test_risque test_actions)
+foreach(nom test_json test_texte_graphe test_risque test_actions test_wasm_commun)
     add_executable(${nom} ${nom}.cpp)
     target_link_libraries(${nom} PRIVATE souk_moteur)
     add_test(NAME ${nom} COMMAND ${nom})

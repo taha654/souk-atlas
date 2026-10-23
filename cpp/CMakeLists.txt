@@ -3,6 +3,7 @@
 #   common/  : bibliothèque partagée (JSON, texte, graphe)
 #   engine/  : moteur appelé par PHP (JSON sur stdin → JSON sur stdout)
 #   console/ : outil d'administration en ligne de commande (API JSON du site)
+#   wasm/    : module WebAssembly pour le navigateur (Emscripten : ./cpp/construire_wasm.sh)
 #   tests/   : tests unitaires et d'intégration (CTest)
 # Construction (dans Docker) : ./cpp/construire.sh
 # =============================================================================
@@ -12,6 +13,14 @@ project(SoukAtlasCpp LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(EMSCRIPTEN)
+    # Compilation pour le navigateur : seulement le code partagé et les liaisons
+    add_compile_options(-Wall -Wextra -Wpedantic -Wshadow)
+    add_subdirectory(common)
+    add_subdirectory(wasm)
+    return()
+endif()
 
 # Avertissements stricts : un avertissement est souvent un bug en devenir
 add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wno-sign-conversion)
