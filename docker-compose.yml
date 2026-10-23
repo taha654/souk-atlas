@@ -31,6 +31,10 @@ services:
   php:
     build:
       context: ./docker/php
+      # Second dossier visible par le Dockerfile : les sources C++ du moteur,
+      # compilées pendant la construction de l'image (voir docker/php/Dockerfile)
+      additional_contexts:
+        cpp: ./cpp
       # www-data reçoit l'uid de l'utilisateur de la machine : les fichiers écrits
       # par le site (emails simulés, photos) lui appartiennent (voir le Dockerfile)
       args:
