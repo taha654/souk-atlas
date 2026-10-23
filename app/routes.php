@@ -32,7 +32,28 @@ return static function (Router $router): void {
     $router->get('/vendeur/commandes/{numero}', 'VendeurController@commande');
     $router->post('/vendeur/commandes/{numero}/statut', 'VendeurController@changerStatutCommande');
     $router->get('/api/vendeur/statistiques', 'Api\\StatistiquesApiController@vendeur');
+    // Espace administrateur (Auth::exigerRole('ADMIN') dans chaque action)
     $router->get('/admin', 'AdminController@index');
+    $router->get('/api/admin/statistiques', 'AdminController@apiStatistiques');
+    $router->get('/admin/moderation', 'AdminController@moderation');
+    $router->post('/admin/annonces/{id}/moderer', 'AdminController@modererAnnonce');
+    $router->get('/admin/signalements', 'AdminController@signalements');
+    $router->get('/admin/signalements/{id}', 'AdminController@signalement');
+    $router->post('/admin/signalements/{id}/traiter', 'AdminController@traiterSignalement');
+    $router->get('/admin/avis', 'AdminController@avis');
+    $router->post('/admin/avis/{id}/statut', 'AdminController@statutAvis');
+    $router->get('/admin/boutiques', 'AdminController@boutiques');
+    $router->post('/admin/boutiques/{id}/statut', 'AdminController@statutBoutique');
+    $router->get('/admin/utilisateurs', 'AdminController@utilisateurs');
+    $router->post('/admin/utilisateurs/{id}', 'AdminController@modifierUtilisateur');
+    $router->get('/admin/categories', 'AdminController@categories');
+    $router->post('/admin/categories', 'AdminController@creerCategorie');
+    $router->post('/admin/categories/{id}', 'AdminController@renommerCategorie');
+    $router->post('/admin/categories/{id}/supprimer', 'AdminController@supprimerCategorie');
+    $router->get('/admin/promotions', 'AdminController@promotions');
+    $router->post('/admin/promotions', 'AdminController@creerPromotion');
+    $router->post('/admin/promotions/{id}/desactiver', 'AdminController@desactiverPromotion');
+    $router->get('/admin/journal', 'AdminController@journal');
 
     // Catalogue
     $router->get('/catalogue', 'CatalogueController@index');

@@ -44,6 +44,35 @@ final class Categorie
         ], $lignes);
     }
 
+    public function creer(string $nom, ?int $idParent): int
+    {
+        $p = ['nom' => $nom, 'parent' => $idParent, 'id' => null];
+        $this->db->appeler('BEGIN pkg_catalogue.creer_categorie(:nom, :parent, :id); END;', $p);
+        return (int) $p['id'];
+    }
+
+    public function renommer(int $id, string $nom): void
+    {
+        $p = ['id' => $id, 'nom' => $nom];
+        $this->db->appeler('BEGIN pkg_catalogue.renommer_categorie(:id, :nom); END;', $p);
+    }
+
+    public function supprimer(int $id): void
+    {
+        $p = ['id' => $id];
+        $this->db->appeler('BEGIN pkg_catalogue.supprimer_categorie(:id); END;', $p);
+    }
+
+    /** Nombre d'annonces EN LIGNE par catégorie (pour l'écran d'administration) @return array<int, int> */
+    public function nbAnnoncesParCategorie(): array
+    {
+        $compte = [];
+        foreach ($this->db->lignes('SELECT id_categorie, COUNT(*) AS nb FROM annonce GROUP BY id_categorie') as $l) {
+            $compte[(int) $l['ID_CATEGORIE']] = (int) $l['NB'];
+        }
+        return $compte;
+    }
+
     /**
      * Fil d'Ariane, de la racine à la catégorie : [['id' => 1, 'nom' => 'Électronique'], …]
      *
