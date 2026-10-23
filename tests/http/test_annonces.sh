@@ -29,7 +29,7 @@ verifier "titre trop court : 422" 422 "$(poster "$A" /annonces titre=Vélo 'desc
 verifier "publication : 303" 303 "$(poster "$A" /annonces 'titre=Vélo de ville Zéphyr test' 'description=Vélo de ville, très bon état, révisé.' prix=900 ville=Rabat id_categorie=24)"
 ID=$(location | sed 's|.*/mes-annonces/||')
 verifier "redirection vers la gestion de l'annonce" 1 "$(grep -c '^[0-9]\+$' <<< "$ID")"
-verifier "en ligne sans modération (pas encore de score C++)" EN_LIGNE "$(sql "SELECT statut FROM annonce WHERE id = $ID;")"
+verifier "annonce ordinaire : en ligne sans modération (score C++ faible)" EN_LIGNE "$(sql "SELECT statut FROM annonce WHERE id = $ID;")"
 verifier "expiration dans 30 jours" 30 "$(sql "SELECT ROUND(date_expiration - SYSDATE) FROM annonce WHERE id = $ID;")"
 verifier "fiche publique : 200" 200 "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/annonce/$ID")"
 verifier_contient "trouvée par la recherche sans accents (« zephyr »)" "Vélo de ville Zéphyr test" "$(curl -s "$BASE/annonces?q=zephyr")"

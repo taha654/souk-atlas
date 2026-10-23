@@ -20,6 +20,8 @@ use App\Models\Commande;
 use App\Models\CommandeVendeur;
 use App\Models\ProduitVendeur;
 use App\Models\FiltresCatalogue;
+use App\Services\CppEngine;
+use App\Services\ErreurMoteur;
 use App\Services\Mailer;
 use App\Services\Upload;
 use App\Models\Produit;
@@ -274,6 +276,41 @@ verifier('actions vendeur : commande payée → expédier ou annuler',
 verifier('actions vendeur : à la livraison, en attente → expédier ou annuler',
     array_keys(CommandeVendeur::actionsPossibles('EN_ATTENTE', 'LIVRAISON')) === ['EXPEDIEE', 'ANNULEE']);
 verifier('actions vendeur : livrée → aucune', CommandeVendeur::actionsPossibles('LIVREE', 'CARTE') === []);
+
+// ----------------------------------------------------------------- CppEngine (appel du moteur C++)
+// De faux "moteurs" (petits scripts shell) simulent chaque panne possible
+$dossierFaux = sys_get_temp_dir() . '/souk-faux-moteurs-' . getmypid();
+@mkdir($dossierFaux);
+$faux = static function (string $nom, string $script) use ($dossierFaux): string {
+    $chemin = "$dossierFaux/$nom";
+    file_put_contents($chemin, "#!/bin/sh\n$script\n");
+    chmod($chemin, 0755);
+    return $chemin;
+};
+$moteurReel = '/usr/local/bin/souk-moteur';
+if (is_executable($moteurReel)) {
+    $reponse = (new CppEngine($moteurReel))->executer(['action' => 'risque_annonce',
+        'annonce' => ['titre' => 'Téléphone URGENT', 'description' => 'virement', 'prix' => 100]]);
+    verifier('moteur réel : réponse décodée', $reponse['ok'] === true && is_int($reponse['score']));
+    verifier('moteur réel : accents conservés dans les raisons',
+        str_contains(json_encode($reponse['raisons'], JSON_UNESCAPED_UNICODE), '« urgent »'));
+    verifierException('moteur réel : action inconnue → ErreurMoteur', ErreurMoteur::class,
+        fn () => (new CppEngine($moteurReel))->executer(['action' => 'inconnue']));
+}
+verifierException('moteur absent → ErreurMoteur', ErreurMoteur::class,
+    fn () => (new CppEngine('/nulle/part/souk-moteur'))->executer(['action' => 'x']));
+verifierException('réponse non JSON → ErreurMoteur', ErreurMoteur::class,
+    fn () => (new CppEngine($faux('bavard', 'echo "Segmentation fault"')))->executer(['action' => 'x']));
+verifierException('code de sortie non nul → ErreurMoteur', ErreurMoteur::class,
+    fn () => (new CppEngine($faux('echec', 'echo \'{"ok":true}\'; exit 3')))->executer(['action' => 'x']));
+$debut = microtime(true);
+verifierException('moteur bloqué → tué après le délai', ErreurMoteur::class,
+    fn () => (new CppEngine($faux('lent', 'sleep 10'), 0.5))->executer(['action' => 'x']));
+verifier('délai respecté (moins de 2 s)', microtime(true) - $debut < 2, sprintf('%.2f s', microtime(true) - $debut));
+$echo = (new CppEngine($faux('echo', 'cat > /dev/null; echo \'{"ok":true,"recu":1}\'')))->executer(['action' => 'x']);
+verifier('faux moteur correct : réponse lue', $echo === ['ok' => true, 'recu' => 1]);
+array_map('unlink', glob("$dossierFaux/*"));
+rmdir($dossierFaux);
 
 echo "\nBILAN PHP : $ok OK, $echecs ÉCHEC\n";
 exit($echecs === 0 ? 0 : 1);

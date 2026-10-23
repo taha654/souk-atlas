@@ -11,6 +11,7 @@ lancer() {   # lancer "Nom" commande…
     printf '%-12s %s\n' "$1" "$(grep -E 'TOTAL|BILAN|passed|failed' <<< "$sortie" | tail -1 | sed 's/^ *//')"
     [[ $code -eq 0 ]] || { echec=1; grep -E 'ÉCHEC  |PLANTAGE|✘' <<< "$sortie" | head -10 | sed 's/^/    /'; }
 }
+lancer "C++"        cpp/construire.sh
 lancer "PL/SQL"     docker compose exec -T oracle /opt/souk/database/tests/lancer_tests.sh
 lancer "PHP"        docker compose exec -T php php tests/php/test_unitaires.php
 for f in tests/http/test_*.sh; do
