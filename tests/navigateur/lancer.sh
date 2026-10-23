@@ -14,6 +14,14 @@ cd "$(dirname "$0")/../.."
 
 # Comptes créés par les tests (test-…@exemple.ma), commandes et stock : remis en ordre à la fin
 nettoyer() {
+    # Fichiers des photos envoyées par les vendeurs de test, puis les données
+    docker compose exec -T oracle bash -c 'sqlplus -s -L "$APP_USER/$APP_USER_PASSWORD@//localhost/FREEPDB1"' <<'SQL' \
+        | grep '^/uploads/' | while read -r chemin; do rm -f "public$chemin"; done
+SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
+SELECT ph.chemin FROM produit_photo ph JOIN produit p ON p.id = ph.id_produit JOIN boutique b ON b.id = p.id_boutique
+  JOIN utilisateur u ON u.id = b.id_vendeur WHERE u.email LIKE 'test-%' AND ph.chemin LIKE '/uploads/%';
+EXIT
+SQL
     docker compose exec -T oracle bash -c \
         'sqlplus -s -L "$APP_USER/$APP_USER_PASSWORD@//localhost/FREEPDB1"' > /dev/null <<'SQL'
 @/opt/souk/database/tests/nettoyer_comptes_test.sql

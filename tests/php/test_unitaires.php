@@ -15,9 +15,13 @@ use App\Core\Erreurs\ErreurMetier;
 use App\Core\Erreurs\MethodeNonAutorisee;
 use App\Core\Erreurs\RouteIntrouvable;
 use App\Core\Router;
+use App\Models\Boutique;
 use App\Models\Commande;
+use App\Models\CommandeVendeur;
+use App\Models\ProduitVendeur;
 use App\Models\FiltresCatalogue;
 use App\Services\Mailer;
+use App\Services\Upload;
 use App\Models\Produit;
 use App\Models\Utilisateur;
 
@@ -225,6 +229,51 @@ verifierException('adresse invalide refusée', InvalidArgumentException::class,
     fn () => $mailer->envoyer('pas-une-adresse', 'Sujet', 'x'));
 array_map('unlink', glob($dossier . '/*.eml'));
 rmdir($dossier);
+
+// ----------------------------------------------------------------- Envoi de photos
+echo "--- Upload\n";
+$tmp = sys_get_temp_dir();
+// PNG valide de 1 x 1 pixel (les 67 octets d'une vraie image)
+$png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
+file_put_contents("$tmp/vraie.png", $png);
+file_put_contents("$tmp/script.png", '<?php echo "pirate"; ?>');          // script déguisé en image
+file_put_contents("$tmp/fausse.jpg", "\xFF\xD8\xFF\xE0" . str_repeat('x', 100)); // début JPEG, contenu corrompu
+verifier('PNG valide acceptée → extension png', Upload::verifier("$tmp/vraie.png", strlen($png), UPLOAD_ERR_OK) === 'png');
+verifierException('script PHP nommé .png refusé (finfo lit le contenu)', ErreurMetier::class,
+    fn () => Upload::verifier("$tmp/script.png", 24, UPLOAD_ERR_OK));
+verifierException('JPEG corrompu refusé (getimagesize)', ErreurMetier::class,
+    fn () => Upload::verifier("$tmp/fausse.jpg", 104, UPLOAD_ERR_OK));
+verifierException('plus de 5 Mo refusé', ErreurMetier::class,
+    fn () => Upload::verifier("$tmp/vraie.png", 6 * 1024 * 1024, UPLOAD_ERR_OK));
+verifierException('limite PHP dépassée (UPLOAD_ERR_INI_SIZE) refusée', ErreurMetier::class,
+    fn () => Upload::verifier("$tmp/vraie.png", 0, UPLOAD_ERR_INI_SIZE));
+verifierException('aucun fichier', ErreurMetier::class, fn () => Upload::verifier('', 0, UPLOAD_ERR_NO_FILE));
+array_map('unlink', ["$tmp/vraie.png", "$tmp/script.png", "$tmp/fausse.jpg"]);
+// supprimer() ignore tout chemin qui ne ressemble pas à un fichier envoyé
+$leurre = "$tmp/souk-leurre-" . bin2hex(random_bytes(3));
+mkdir("$leurre/uploads/produits", 0755, true);
+file_put_contents("$leurre/index.php", 'à garder');
+(new Upload($leurre))->supprimer('/uploads/produits/../../index.php');
+verifier('supprimer() refuse "../" (fichier hors de uploads/ intact)', is_file("$leurre/index.php"));
+unlink("$leurre/index.php"); rmdir("$leurre/uploads/produits"); rmdir("$leurre/uploads"); rmdir($leurre);
+
+echo "--- Formulaires vendeur\n";
+[$v, $e] = ProduitVendeur::validerFormulaire(['nom' => 'Lampe en cuivre', 'description' => '', 'prix_ht' => '1 290,50',
+    'id_categorie' => '13', 'stock' => '4'], true);
+verifier('produit valide : prix "1 290,50" lu 1290.5', $e === [] && $v['prix_ht'] === 1290.5 && $v['stock'] === 4,
+    json_encode($e, JSON_UNESCAPED_UNICODE));
+[, $e] = ProduitVendeur::validerFormulaire(['nom' => 'Lampe', 'prix_ht' => '12.345', 'id_categorie' => '13', 'stock' => '1'], true);
+verifier('3 décimales refusées', isset($e['prix_ht']));
+[, $e] = ProduitVendeur::validerFormulaire(['nom' => 'Lampe', 'prix_ht' => '-5', 'id_categorie' => 'x', 'stock' => '-1'], true);
+verifier('prix négatif, catégorie et stock invalides', isset($e['prix_ht'], $e['id_categorie'], $e['stock']));
+[, $e] = ProduitVendeur::validerFormulaire(['nom' => 'Lampe', 'prix_ht' => '10', 'id_categorie' => '13', 'statut' => 'SUPPRIME'], false);
+verifier('statut inconnu refusé (modification)', isset($e['statut']));
+verifier('boutique : nom trop court', isset(Boutique::validerFormulaire(['nom' => 'AB', 'ville' => 'Rabat'])['nom']));
+verifier('actions vendeur : commande payée → expédier ou annuler',
+    array_keys(CommandeVendeur::actionsPossibles('PAYEE', 'CARTE')) === ['EXPEDIEE', 'ANNULEE']);
+verifier('actions vendeur : à la livraison, en attente → expédier ou annuler',
+    array_keys(CommandeVendeur::actionsPossibles('EN_ATTENTE', 'LIVRAISON')) === ['EXPEDIEE', 'ANNULEE']);
+verifier('actions vendeur : livrée → aucune', CommandeVendeur::actionsPossibles('LIVREE', 'CARTE') === []);
 
 echo "\nBILAN PHP : $ok OK, $echecs ÉCHEC\n";
 exit($echecs === 0 ? 0 : 1);
