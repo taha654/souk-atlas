@@ -68,7 +68,7 @@ Rien d'autre à installer : PHP, Oracle, le compilateur C++ et CMake tournent da
 ### Installation
 
 ```bash
-git clone <adresse-du-dépôt> souk-atlas
+git clone https://github.com/taha654/souk-atlas.git
 cd souk-atlas
 cp .env.example .env        # puis changer les mots de passe dans .env
 docker compose up -d --build
