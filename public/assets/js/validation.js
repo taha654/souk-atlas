@@ -76,3 +76,15 @@ function brancher(formulaire) {
 }
 
 document.querySelectorAll('form[data-valider]').forEach(brancher);
+
+// Taille maximale d'un fichier (data-taille-max, en octets) : l'utilisateur
+// est prévenu AVANT d'attendre l'envoi d'une photo trop lourde. Le serveur
+// revérifie (app/Services/Upload.php).
+for (const champ of document.querySelectorAll('input[type="file"][data-taille-max]')) {
+    champ.addEventListener('change', () => {
+        const fichier = champ.files[0];
+        const trop = fichier && fichier.size > Number(champ.dataset.tailleMax);
+        champ.setCustomValidity(trop ? 'Photo trop lourde : 5 Mo au maximum.' : '');
+        champ.reportValidity();
+    });
+}

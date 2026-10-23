@@ -294,3 +294,41 @@ h2 { font-size: 1.35rem; }
 .suivi__etape[aria-current="step"] .suivi__libelle { font-weight: 700; }
 .suivi__libelle, .suivi__date { display: block; }
 .suivi__date { font-size: 0.85rem; }
+
+/* =============================================================================
+   Étape 5 : espace vendeur, graphiques
+   ============================================================================= */
+.sous-menu ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0; margin: 0 0 1.5rem; }
+.sous-menu a { display: inline-block; padding: 0.4rem 0.9rem; border-radius: 999px; background: #fff;
+    border: 1px solid var(--bordure); text-decoration: none; }
+.sous-menu a[aria-current="page"] { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.entete-section { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.choix-periode select { margin-left: 0.4rem; padding: 0.35rem; font: inherit; border-radius: 6px; border: 1px solid var(--bordure); }
+.statut-boutique { color: var(--texte-doux); }
+.statut-boutique--en_attente, .statut-boutique--refusee, .statut-boutique--suspendue { color: var(--erreur); font-weight: 600; }
+.grille-graphiques { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 1rem; }
+.graphique { margin: 0; }
+.graphique--large { grid-column: 1 / -1; }   /* courbe par jour : toute la largeur */
+.graphique figcaption { font-weight: 600; margin-bottom: 0.5rem; }
+.graphique__zone { min-height: 120px; }
+.graphique__svg { width: 100%; height: auto; display: block; }
+.graphique__grille { stroke: var(--bordure); stroke-width: 1; }
+.graphique__axe { fill: var(--texte-doux); font-size: 13px; }
+.graphique__libelle { fill: var(--texte); font-size: 14px; }
+.graphique__barre { fill: var(--bleu); }
+.graphique__barre:hover { fill: var(--terre); }
+.graphique__ligne { fill: none; stroke: var(--bleu); stroke-width: 2.5; }
+.graphique__aire { fill: var(--bleu); opacity: 0.08; }
+.graphique__point { fill: var(--bleu); }
+.graphique__point:hover { fill: var(--terre); r: 6; }
+.tableau-donnees { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem; }
+.tableau-donnees th, .tableau-donnees td { padding: 0.25rem 0.4rem; border-bottom: 1px solid var(--bordure); text-align: left; }
+.defilement-horizontal { overflow-x: auto; }
+.cellule-produit { display: flex; align-items: center; gap: 0.6rem; }
+.cellule-produit img { border-radius: 4px; flex: none; }
+.photos-vendeur { list-style: none; display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 0; }
+.photos-vendeur img { display: block; border-radius: 6px; border: 1px solid var(--bordure); object-fit: cover; }
+.filtres-statut { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; }
+.filtres-statut a[aria-current="page"] { font-weight: 700; text-decoration: none; color: var(--texte); }
+textarea { width: 100%; padding: 0.6rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; }
+.champ select { padding: 0.5rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; background: #fff; max-width: 100%; }
