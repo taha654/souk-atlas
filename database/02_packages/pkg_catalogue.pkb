@@ -254,6 +254,56 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
     END ajuster_stock;
 
     -- =========================================================================
+    -- Catégories
+    -- =========================================================================
+    PROCEDURE creer_categorie(p_nom IN VARCHAR2, p_id_parent IN NUMBER, p_id OUT NUMBER) IS
+    BEGIN
+        IF LENGTH(TRIM(p_nom)) < 2 OR TRIM(p_nom) IS NULL THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le nom de la catégorie doit faire au moins 2 caractères.');
+        END IF;
+        INSERT INTO categorie (nom, id_parent) VALUES (TRIM(p_nom), p_id_parent) RETURNING id INTO p_id;
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Cette catégorie existe déjà à cet endroit de l''arbre.');
+    END creer_categorie;
+
+    PROCEDURE renommer_categorie(p_id IN NUMBER, p_nom IN VARCHAR2) IS
+    BEGIN
+        IF LENGTH(TRIM(p_nom)) < 2 OR TRIM(p_nom) IS NULL THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le nom de la catégorie doit faire au moins 2 caractères.');
+        END IF;
+        UPDATE categorie SET nom = TRIM(p_nom) WHERE id = p_id;
+        IF SQL%ROWCOUNT = 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Catégorie introuvable : ' || p_id);
+        END IF;
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Une catégorie porte déjà ce nom à cet endroit de l''arbre.');
+    END renommer_categorie;
+
+    PROCEDURE supprimer_categorie(p_id IN NUMBER) IS
+        v_enfants   PLS_INTEGER;
+        v_produits  PLS_INTEGER;
+        v_annonces  PLS_INTEGER;
+    BEGIN
+        SELECT (SELECT COUNT(*) FROM categorie WHERE id_parent = p_id),
+               (SELECT COUNT(*) FROM produit WHERE id_categorie = p_id),
+               (SELECT COUNT(*) FROM annonce WHERE id_categorie = p_id)
+          INTO v_enfants, v_produits, v_annonces
+          FROM dual;
+        -- Message précis : l'admin sait quoi déplacer avant de réessayer
+        IF v_enfants + v_produits + v_annonces > 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Catégorie non vide : ' || v_enfants
+                || ' sous-catégorie(s), ' || v_produits || ' produit(s), ' || v_annonces || ' annonce(s).');
+        END IF;
+        DELETE FROM promotion WHERE id_categorie = p_id;
+        DELETE FROM categorie WHERE id = p_id;
+        IF SQL%ROWCOUNT = 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Catégorie introuvable : ' || p_id);
+        END IF;
+    END supprimer_categorie;
+
+    -- =========================================================================
     -- Photos
     -- =========================================================================
     PROCEDURE ajouter_photo(p_id_produit IN NUMBER, p_id_boutique IN NUMBER, p_chemin IN VARCHAR2, p_id OUT NUMBER) IS
@@ -318,6 +368,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
         VALUES (p_libelle, p_pourcentage, p_date_debut, p_date_fin, p_id_produit, p_id_categorie)
         RETURNING id INTO p_id;
     END creer_promotion;
+
+    PROCEDURE desactiver_promotion(p_id IN NUMBER) IS
+    BEGIN
+        UPDATE promotion SET actif = 0 WHERE id = p_id;
+        IF SQL%ROWCOUNT = 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Promotion introuvable : ' || p_id);
+        END IF;
+    END desactiver_promotion;
 
     PROCEDURE desactiver_promotions_terminees(p_nb OUT NUMBER) IS
     BEGIN

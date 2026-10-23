@@ -76,6 +76,13 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
     PROCEDURE ajuster_stock(
         p_id IN produit.id%TYPE, p_id_boutique IN produit.id_boutique%TYPE, p_delta IN NUMBER);
 
+    -- ----- Catégories (admin) -----
+    -- p_id_parent NULL = catégorie racine ; -20017 si le nom existe déjà au même niveau
+    PROCEDURE creer_categorie(p_nom IN VARCHAR2, p_id_parent IN NUMBER, p_id OUT NUMBER);
+    PROCEDURE renommer_categorie(p_id IN NUMBER, p_nom IN VARCHAR2);
+    -- Refusée (-20017) si la catégorie a des sous-catégories, des produits ou des annonces
+    PROCEDURE supprimer_categorie(p_id IN NUMBER);
+
     -- ----- Photos (espace vendeur) -----
     c_photos_max CONSTANT PLS_INTEGER := 6;
     -- Ajoute une photo en dernière position ; -20012 si le produit n'est pas à la
@@ -94,6 +101,9 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
         p_id_produit    IN  promotion.id_produit%TYPE,
         p_id_categorie  IN  promotion.id_categorie%TYPE,
         p_id            OUT promotion.id%TYPE);
+
+    -- Arrêt anticipé d'une promotion par l'admin
+    PROCEDURE desactiver_promotion(p_id IN NUMBER);
 
     -- Appelée par le job JOB_FIN_PROMOTIONS ; p_nb = nombre de promotions désactivées
     PROCEDURE desactiver_promotions_terminees(p_nb OUT NUMBER);
