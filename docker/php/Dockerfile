@@ -24,9 +24,11 @@ RUN docker-php-ext-configure oci8 --with-oci8=instantclient,/opt/oracle/instantc
 #    app/, database/, cpp/… restent inaccessibles depuis le navigateur.
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf \
-    # mod_rewrite servira au routeur (URL propres) à l'étape 2
-    && a2enmod rewrite
+    && sed -ri 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+# URL propres (FallbackResource vers index.php), pas de listing de dossiers
+COPY apache-souk.conf /etc/apache2/conf-available/souk.conf
+RUN a2enconf souk
 
-# Configuration PHP de développement (erreurs affichées)
+# Configuration PHP : base "development", puis nos réglages (sessions, fuseau horaire)
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+COPY souk.ini "$PHP_INI_DIR/conf.d/zz-souk.ini"

@@ -35,6 +35,12 @@ services:
       DB_PASSWORD: ${APP_USER_PASSWORD}
       # "oracle" est le nom du service ci-dessus : Docker le résout en adresse IP
       DB_DSN: //oracle:1521/FREEPDB1
+      # dev : détail des erreurs affiché ; prod : message générique seulement
+      APP_ENV: ${APP_ENV:-dev}
+      # Déconnexion automatique après cette durée sans requête
+      SESSION_INACTIVITE_SECONDES: ${SESSION_INACTIVITE_SECONDES:-1800}
+      # 1 = cookie de session toujours "Secure" (production derrière HTTPS)
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
     ports:
       - "${WEB_PORT:-8000}:80"
     volumes:
