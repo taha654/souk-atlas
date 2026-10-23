@@ -33,7 +33,8 @@ RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-avail
     && sed -ri 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 # URL propres (FallbackResource vers index.php), pas de listing de dossiers
 COPY apache-souk.conf /etc/apache2/conf-available/souk.conf
-RUN a2enconf souk
+# mod_headers : en-têtes ajoutés par Apache (dossier uploads)
+RUN a2enmod headers && a2enconf souk
 
 # Configuration PHP : base "development", puis nos réglages (sessions, fuseau horaire)
 RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
