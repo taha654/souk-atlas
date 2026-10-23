@@ -13,6 +13,14 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
     FUNCTION pourcentage_promo(p_id_produit IN produit.id%TYPE) RETURN NUMBER;
     -- Prix HT après promotion, arrondi au centime
     FUNCTION prix_courant(p_id_produit IN produit.id%TYPE) RETURN NUMBER;
+    -- Même prix, TVA comprise (prix affiché aux particuliers)
+    FUNCTION prix_courant_ttc(p_id_produit IN produit.id%TYPE) RETURN NUMBER;
+    -- Montant HT → TTC, avec le taux unique de pkg_panier.c_taux_tva
+    FUNCTION ttc(p_montant_ht IN NUMBER) RETURN NUMBER DETERMINISTIC;
+
+    -- Texte en minuscules et sans accents, pour comparer "Téléphone" et "telephone".
+    -- DETERMINISTIC : même entrée, même sortie (Oracle peut mettre le résultat en cache).
+    FUNCTION normaliser(p_texte IN VARCHAR2) RETURN VARCHAR2 DETERMINISTIC;
 
     -- ----- Catégories -----
     -- Arbre complet : id, nom, id_parent, niveau, chemin, est_feuille
@@ -21,10 +29,14 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
     FUNCTION chemin_categorie(p_id_categorie IN categorie.id%TYPE) RETURN VARCHAR2;
 
     -- ----- Recherche -----
+    -- Recherche insensible à la casse et aux accents (nom et description).
     -- p_id_categorie inclut toutes les sous-catégories.
+    -- p_prix_min / p_prix_max : prix TTC, celui que voit l'acheteur.
+    -- p_en_stock = 1 : seulement les produits disponibles.
     -- p_tri : 'pertinence' (défaut), 'prix_asc', 'prix_desc', 'recent', 'note'.
     -- Colonnes : id, nom, id_categorie, boutique, prix_ht, pourcentage_promo,
-    --            prix_courant_ht, stock, note_moyenne, nb_avis, photo, total
+    --            prix_courant_ht, prix_courant_ttc, prix_ttc (avant promo), stock, note_moyenne, nb_avis,
+    --            date_creation, photo, pertinence, total
     -- (total = nombre de résultats sans pagination, calculé par COUNT(*) OVER ()).
     FUNCTION rechercher(
         p_texte         IN VARCHAR2 DEFAULT NULL,
@@ -33,7 +45,8 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
         p_prix_max      IN NUMBER   DEFAULT NULL,
         p_tri           IN VARCHAR2 DEFAULT 'pertinence',
         p_page          IN NUMBER   DEFAULT 1,
-        p_taille_page   IN NUMBER   DEFAULT 20) RETURN SYS_REFCURSOR;
+        p_taille_page   IN NUMBER   DEFAULT 20,
+        p_en_stock      IN NUMBER   DEFAULT 0) RETURN SYS_REFCURSOR;
 
     -- Autocomplétion : produits dont un mot commence par p_prefixe
     FUNCTION suggestions(p_prefixe IN VARCHAR2, p_limite IN NUMBER DEFAULT 8) RETURN SYS_REFCURSOR;

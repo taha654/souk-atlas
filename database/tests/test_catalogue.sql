@@ -95,8 +95,31 @@ BEGIN
 
     v_curseur := pkg_catalogue.rechercher(p_prix_min => 1000, p_prix_max => 2000, p_taille_page => 100);
     SELECT COUNT(*) INTO v_attendu FROM produit p JOIN boutique b ON b.id = p.id_boutique
-     WHERE p.statut = 'ACTIF' AND b.statut = 'VALIDEE' AND p.prix_ht BETWEEN 1000 AND 2000;
-    pkg_test.verifier_egal('rechercher : filtre prix entre 1000 et 2000', v_attendu, pkg_test.nb_lignes(v_curseur));
+     WHERE p.statut = 'ACTIF' AND b.statut = 'VALIDEE' AND ROUND(p.prix_ht * 1.2, 2) BETWEEN 1000 AND 2000;
+    pkg_test.verifier_egal('rechercher : filtre sur le prix TTC entre 1000 et 2000', v_attendu, pkg_test.nb_lignes(v_curseur));
+    pkg_test.verifier_egal('prix_courant_ttc : 3290 HT → 3948 TTC', 3948, pkg_catalogue.prix_courant_ttc(1));
+
+    -- ----- Accents et casse -----
+    pkg_test.verifier_egal('normaliser : minuscules et sans accents', 'telephone ete a garcon',
+                           pkg_catalogue.normaliser('Téléphone ÉTÉ à garçon'));
+    SELECT COUNT(*) INTO v_nombre FROM produit WHERE nom_recherche <> pkg_catalogue.normaliser(nom);
+    pkg_test.verifier_egal('colonne virtuelle nom_recherche = normaliser(nom)', 0, v_nombre);
+    v_curseur := pkg_catalogue.rechercher(p_texte => 'ecran', p_taille_page => 100);
+    v_attendu := pkg_test.nb_lignes(v_curseur);
+    pkg_test.verifier('rechercher "ecran" trouve "Écran"', v_attendu > 0);
+    v_curseur := pkg_catalogue.rechercher(p_texte => 'ÉCRAN', p_taille_page => 100);
+    pkg_test.verifier_egal('rechercher : "ÉCRAN" et "ecran" donnent les mêmes résultats', v_attendu,
+                           pkg_test.nb_lignes(v_curseur));
+    v_curseur := pkg_catalogue.suggestions('ecou');
+    pkg_test.verifier_egal('suggestions "ecou" : "Écouteurs sans fil Bluetooth"', 'Écouteurs sans fil Bluetooth',
+                           pkg_test.valeur(v_curseur, 'nom'));
+
+    -- ----- En stock uniquement -----
+    UPDATE produit SET stock = 0 WHERE id = 4;
+    v_curseur := pkg_catalogue.rechercher(p_texte => 'galaxy s24');
+    pkg_test.verifier_egal('rechercher : produit épuisé affiché par défaut', 1, pkg_test.nb_lignes(v_curseur));
+    v_curseur := pkg_catalogue.rechercher(p_texte => 'galaxy s24', p_en_stock => 1);
+    pkg_test.verifier_egal('rechercher en_stock = 1 : produit épuisé masqué', 0, pkg_test.nb_lignes(v_curseur));
 
     v_curseur := pkg_catalogue.rechercher(p_page => 2, p_taille_page => 5);
     pkg_test.verifier_egal('rechercher : page 2 de 5 résultats', 5, pkg_test.nb_lignes(v_curseur));

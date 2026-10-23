@@ -32,6 +32,26 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
             pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Produit introuvable : ' || p_id_produit);
     END prix_courant;
 
+    FUNCTION prix_courant_ttc(p_id_produit IN produit.id%TYPE) RETURN NUMBER IS
+    BEGIN
+        -- Une constante de package (pkg_panier.c_taux_tva) est utilisable ici,
+        -- en PL/SQL, mais pas directement dans un ordre SQL : d'où cette fonction
+        RETURN ttc(prix_courant(p_id_produit));
+    END prix_courant_ttc;
+
+    FUNCTION ttc(p_montant_ht IN NUMBER) RETURN NUMBER DETERMINISTIC IS
+    BEGIN
+        RETURN ROUND(p_montant_ht * (1 + pkg_panier.c_taux_tva), 2);
+    END ttc;
+
+    FUNCTION normaliser(p_texte IN VARCHAR2) RETURN VARCHAR2 DETERMINISTIC IS
+    BEGIN
+        -- TRANSLATE remplace chaque caractère de la 2e chaîne par celui de même
+        -- position dans la 3e. Même expression que la colonne PRODUIT.nom_recherche.
+        RETURN TRANSLATE(LOWER(p_texte), 'àâäáãåçéèêëíìîïñóòôöõúùûüýÿ',
+                                         'aaaaaaceeeeiiiinooooouuuuyy');
+    END normaliser;
+
     -- =========================================================================
     -- Catégories
     -- =========================================================================
@@ -50,7 +70,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
               FROM categorie
              START WITH id_parent IS NULL
            CONNECT BY PRIOR id = id_parent
-             ORDER SIBLINGS BY nom;
+             -- NLSSORT … FRENCH : tri alphabétique français (« É » avec les « E »).
+             -- Un tri binaire classerait « Électronique » après « Sport » (É = code 201).
+             ORDER SIBLINGS BY NLSSORT(nom, 'NLS_SORT=FRENCH');
         RETURN v_curseur;
     END arbre_categories;
 
@@ -77,10 +99,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
         p_prix_max      IN NUMBER   DEFAULT NULL,
         p_tri           IN VARCHAR2 DEFAULT 'pertinence',
         p_page          IN NUMBER   DEFAULT 1,
-        p_taille_page   IN NUMBER   DEFAULT 20) RETURN SYS_REFCURSOR
+        p_taille_page   IN NUMBER   DEFAULT 20,
+        p_en_stock      IN NUMBER   DEFAULT 0) RETURN SYS_REFCURSOR
     IS
         v_curseur SYS_REFCURSOR;
-        v_texte   VARCHAR2(200) := LOWER(TRIM(p_texte));
+        v_texte   VARCHAR2(200) := normaliser(TRIM(p_texte));
         -- Bornes de sécurité : PHP ne doit pas pouvoir demander 1 million de lignes
         v_taille  NUMBER := LEAST(GREATEST(NVL(p_taille_page, 20), 1), 100);
         v_page    NUMBER := GREATEST(NVL(p_page, 1), 1);
@@ -94,24 +117,27 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
                            p.prix_ht,
                            pkg_catalogue.pourcentage_promo(p.id) AS pourcentage_promo,
                            pkg_catalogue.prix_courant(p.id)      AS prix_courant_ht,
+                           pkg_catalogue.prix_courant_ttc(p.id)  AS prix_courant_ttc,
+                           pkg_catalogue.ttc(p.prix_ht)          AS prix_ttc,
                            p.stock, p.note_moyenne, p.nb_avis, p.date_creation,
                            (SELECT MIN(ph.chemin) KEEP (DENSE_RANK FIRST ORDER BY ph.ordre)
                               FROM produit_photo ph WHERE ph.id_produit = p.id) AS photo,
                            -- Pertinence : 2 si le nom commence par le texte, 1 sinon
-                           CASE WHEN LOWER(p.nom) LIKE v_texte || '%' THEN 2 ELSE 1 END AS pertinence
+                           CASE WHEN p.nom_recherche LIKE v_texte || '%' THEN 2 ELSE 1 END AS pertinence
                       FROM produit p
                       JOIN boutique b ON b.id = p.id_boutique
                      WHERE p.statut = 'ACTIF'
                        AND b.statut = 'VALIDEE'
+                       AND (NVL(p_en_stock, 0) = 0 OR p.stock > 0)
                        AND (v_texte IS NULL
-                            OR LOWER(p.nom) LIKE '%' || v_texte || '%'
-                            OR LOWER(p.description) LIKE '%' || v_texte || '%')
+                            OR p.nom_recherche LIKE '%' || v_texte || '%'
+                            OR pkg_catalogue.normaliser(p.description) LIKE '%' || v_texte || '%')
                        AND (p_id_categorie IS NULL
                             OR p.id_categorie IN (SELECT c.id FROM categorie c
                                                    START WITH c.id = p_id_categorie
                                                  CONNECT BY PRIOR c.id = c.id_parent))) r
-             WHERE (p_prix_min IS NULL OR r.prix_courant_ht >= p_prix_min)
-               AND (p_prix_max IS NULL OR r.prix_courant_ht <= p_prix_max)
+             WHERE (p_prix_min IS NULL OR r.prix_courant_ttc >= p_prix_min)
+               AND (p_prix_max IS NULL OR r.prix_courant_ttc <= p_prix_max)
              -- Tri choisi sans SQL dynamique : un seul CASE est "actif" à la fois,
              -- les autres valent NULL pour toutes les lignes et ne trient rien
              ORDER BY CASE WHEN p_tri = 'prix_asc'  THEN r.prix_courant_ht END ASC,
@@ -125,16 +151,18 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
 
     FUNCTION suggestions(p_prefixe IN VARCHAR2, p_limite IN NUMBER DEFAULT 8) RETURN SYS_REFCURSOR IS
         v_curseur SYS_REFCURSOR;
-        v_prefixe VARCHAR2(100) := LOWER(TRIM(p_prefixe));
+        v_prefixe VARCHAR2(100) := normaliser(TRIM(p_prefixe));
     BEGIN
         OPEN v_curseur FOR
             SELECT p.id, p.nom
               FROM produit p
+              JOIN boutique b ON b.id = p.id_boutique
              WHERE p.statut = 'ACTIF'
+               AND b.statut = 'VALIDEE'
                AND v_prefixe IS NOT NULL
-               AND (LOWER(p.nom) LIKE v_prefixe || '%'          -- début du nom
-                    OR LOWER(p.nom) LIKE '% ' || v_prefixe || '%') -- début d'un autre mot
-             ORDER BY CASE WHEN LOWER(p.nom) LIKE v_prefixe || '%' THEN 0 ELSE 1 END, p.nom
+               AND (p.nom_recherche LIKE v_prefixe || '%'           -- début du nom
+                    OR p.nom_recherche LIKE '% ' || v_prefixe || '%') -- début d'un autre mot
+             ORDER BY CASE WHEN p.nom_recherche LIKE v_prefixe || '%' THEN 0 ELSE 1 END, p.nom
              FETCH FIRST LEAST(NVL(p_limite, 8), 20) ROWS ONLY;
         RETURN v_curseur;
     END suggestions;

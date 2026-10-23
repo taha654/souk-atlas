@@ -189,6 +189,14 @@ UPDATE produit SET prix_ht = 2190 WHERE id = 2;
 UPDATE produit SET prix_ht = 5790 WHERE id = 15;
 UPDATE historique_prix SET date_changement = SYSDATE - 20 WHERE id_produit = 2 AND nouveau_prix_ht = 2490;
 
+-- Photos : 1 à 3 illustrations SVG par produit. Les fichiers sont générés à
+-- partir de ces lignes par tools/generer_illustrations.php (public/assets/img/produits/).
+INSERT INTO produit_photo (id_produit, chemin, ordre)
+SELECT p.id, '/assets/img/produits/produit-' || p.id || '-' || v.n || '.svg', v.n
+  FROM produit p
+ CROSS JOIN (SELECT LEVEL AS n FROM dual CONNECT BY LEVEL <= 3) v
+ WHERE v.n <= MOD(p.id, 3) + 1;
+
 -- -----------------------------------------------------------------------------
 -- Promotions
 -- Les colonnes de la 1re ligne portent un alias : sans lui, les deux littéraux 1
