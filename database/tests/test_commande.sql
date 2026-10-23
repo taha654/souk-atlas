@@ -158,6 +158,22 @@ BEGIN
         pkg_test.verifier_erreur('passer_commande : compte désactivé refusé', -20009, SQLCODE, SQLERRM);
     END;
 
+    -- Produit de sa propre boutique glissé dans le panier (ex. avant de devenir vendeur)
+    INSERT INTO panier_ligne (id_panier, id_produit, quantite)
+    SELECT id, 1, 1 FROM panier WHERE id_utilisateur = 2;
+    IF SQL%ROWCOUNT = 0 THEN
+        INSERT INTO panier (id_utilisateur) VALUES (2);
+        INSERT INTO panier_ligne (id_panier, id_produit, quantite)
+        SELECT id, 1, 1 FROM panier WHERE id_utilisateur = 2;
+    END IF;
+    BEGIN
+        pkg_commande.passer_commande(2, 'LIVRAISON', '1 rue Test', 'Casablanca', '0600000002',
+                                     NULL, NULL, NULL, NULL, v_ref2);
+        pkg_test.echec('passer_commande : achat dans sa propre boutique refusé', 'aucune erreur levée');
+    EXCEPTION WHEN OTHERS THEN
+        pkg_test.verifier_erreur('passer_commande : achat dans sa propre boutique refusé', -20012, SQLCODE, SQLERRM);
+    END;
+
     -- ----- Paiement à la livraison et cycle de vie -----
     pkg_panier.modifier_quantite(v_client, 24, 1);
     pkg_commande.passer_commande(v_client, 'LIVRAISON', '1 rue Test', 'Fès', '0600000099',

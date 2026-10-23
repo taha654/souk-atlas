@@ -43,6 +43,16 @@ BEGIN
         pkg_test.verifier_erreur('ajouter : boutique non validée refusée', -20004, SQLCODE, SQLERRM);
     END;
 
+    BEGIN
+        pkg_panier.ajouter(2, 1, 1);   -- Youssef (id 2) tient la boutique 1, qui vend le produit 1
+        pkg_test.echec('ajouter : un vendeur n''achète pas dans sa boutique', 'aucune erreur levée');
+    EXCEPTION WHEN OTHERS THEN
+        pkg_test.verifier_erreur('ajouter : un vendeur n''achète pas dans sa boutique', -20012, SQLCODE, SQLERRM);
+    END;
+    pkg_panier.ajouter(2, 44, 1);      -- mais il peut acheter chez les autres
+    pkg_test.verifier_egal('ajouter : un vendeur achète chez un autre vendeur', 1, pkg_panier.nb_articles(2));
+    pkg_panier.vider(2);
+
     pkg_panier.ajouter(c_client, 44, 2);          -- huile d'argan 120 DH
     pkg_panier.calculer_totaux(c_client, v_ht, v_tva, v_ttc, v_nb);
     pkg_test.verifier_egal('calculer_totaux : HT = 3 x 69 + 2 x 120 = 447', 447, v_ht);
@@ -52,6 +62,19 @@ BEGIN
 
     v_curseur := pkg_panier.lignes(c_client);
     pkg_test.verifier_egal('lignes : 2 lignes', 2, pkg_test.nb_lignes(v_curseur));
+
+    -- Arrondi : deux boutiques à 0,03 HT chacune. TVA par boutique : 0,01 + 0,01 = 0,02.
+    -- Un arrondi global donnerait ROUND(0,06 x 0,2) = 0,01 : 1 centime d'écart
+    -- avec ce que PKG_COMMANDE facturera (une commande par boutique).
+    UPDATE produit SET prix_ht = 0.03 WHERE id IN (45, 50);   -- boutiques 4 et 5
+    pkg_panier.vider(c_client);
+    pkg_panier.ajouter(c_client, 45, 1);
+    pkg_panier.ajouter(c_client, 50, 1);
+    pkg_panier.calculer_totaux(c_client, v_ht, v_tva, v_ttc, v_nb);
+    pkg_test.verifier_egal('calculer_totaux : TVA arrondie par boutique (0,01 + 0,01)', 0.02, v_tva);
+    pkg_panier.vider(c_client);
+    pkg_panier.ajouter(c_client, 24, 3);
+    pkg_panier.ajouter(c_client, 44, 2);
 
     pkg_panier.modifier_quantite(c_client, 44, 1);
     pkg_test.verifier_egal('modifier_quantite : 3 + 1 = 4 articles', 4, pkg_panier.nb_articles(c_client));

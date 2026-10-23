@@ -20,7 +20,8 @@ CREATE OR REPLACE PACKAGE pkg_panier AS
     PROCEDURE vider(p_id_utilisateur IN NUMBER);
 
     -- Totaux recalculés à partir des prix EN BASE (promotions comprises),
-    -- jamais à partir de ce qu'envoie le navigateur
+    -- jamais à partir de ce qu'envoie le navigateur. TVA arrondie par boutique,
+    -- comme les commandes : le total affiché est celui qui sera facturé.
     PROCEDURE calculer_totaux(
         p_id_utilisateur IN  NUMBER,
         p_total_ht       OUT NUMBER,
@@ -31,8 +32,8 @@ CREATE OR REPLACE PACKAGE pkg_panier AS
     -- Pour le badge du panier
     FUNCTION nb_articles(p_id_utilisateur IN NUMBER) RETURN NUMBER;
 
-    -- Lignes du panier : id_produit, nom, boutique, quantite, stock,
-    -- prix_unitaire_ht, total_ligne_ht, disponible (1/0)
+    -- Lignes du panier : id_produit, nom, id_boutique, boutique, quantite, stock,
+    -- prix_unitaire_ht, prix_unitaire_ttc, total_ligne_ht, disponible (1/0)
     FUNCTION lignes(p_id_utilisateur IN NUMBER) RETURN SYS_REFCURSOR;
 
     -- Appelée par le job JOB_PURGE_PANIERS ; p_nb = paniers supprimés

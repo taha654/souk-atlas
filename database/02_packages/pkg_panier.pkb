@@ -52,10 +52,26 @@ CREATE OR REPLACE PACKAGE BODY pkg_panier AS
         END IF;
     END verifier_disponibilite;
 
+    -- Un vendeur n'achète pas dans sa propre boutique : il gonflerait ses ventes
+    -- et pourrait ensuite laisser des avis sur ses propres produits
+    PROCEDURE verifier_pas_son_produit(p_id_utilisateur IN NUMBER, p_id_produit IN NUMBER) IS
+        v_nb PLS_INTEGER;
+    BEGIN
+        SELECT COUNT(*) INTO v_nb
+          FROM produit p JOIN boutique b ON b.id = p.id_boutique
+         WHERE p.id = p_id_produit AND b.id_vendeur = p_id_utilisateur;
+        IF v_nb > 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_non_proprietaire,
+                'Vous ne pouvez pas acheter les produits de votre propre boutique.');
+        END IF;
+    END verifier_pas_son_produit;
+
     PROCEDURE ajouter(p_id_utilisateur IN NUMBER, p_id_produit IN NUMBER, p_quantite IN NUMBER DEFAULT 1) IS
-        v_id_panier  NUMBER := id_panier(p_id_utilisateur);
+        v_id_panier  NUMBER;
         v_deja       NUMBER;
     BEGIN
+        verifier_pas_son_produit(p_id_utilisateur, p_id_produit);
+        v_id_panier := id_panier(p_id_utilisateur);
         IF p_quantite IS NULL OR p_quantite <= 0 THEN
             pkg_erreurs.lever(pkg_erreurs.c_quantite_invalide, 'La quantité doit être un entier positif.');
         END IF;
@@ -114,14 +130,21 @@ CREATE OR REPLACE PACKAGE BODY pkg_panier AS
         p_nb_articles    OUT NUMBER)
     IS
     BEGIN
-        SELECT NVL(SUM(pkg_catalogue.prix_courant(pl.id_produit) * pl.quantite), 0),
-               NVL(SUM(pl.quantite), 0)
-          INTO p_total_ht, p_nb_articles
-          FROM panier_ligne pl
-          JOIN panier pa ON pa.id = pl.id_panier
-         WHERE pa.id_utilisateur = p_id_utilisateur;
+        -- TVA arrondie PAR BOUTIQUE puis additionnée, exactement comme
+        -- PKG_COMMANDE.passer_commande (une commande par boutique) : le total
+        -- affiché dans le panier est au centime près celui qui sera facturé.
+        -- (Arrondir une seule fois sur le total global peut donner 1 centime d'écart.)
+        SELECT NVL(SUM(ht_boutique), 0), NVL(SUM(ROUND(ht_boutique * c_taux_tva, 2)), 0), NVL(SUM(articles), 0)
+          INTO p_total_ht, p_tva, p_nb_articles
+          FROM (SELECT p.id_boutique,
+                       SUM(pkg_catalogue.prix_courant(pl.id_produit) * pl.quantite) AS ht_boutique,
+                       SUM(pl.quantite) AS articles
+                  FROM panier_ligne pl
+                  JOIN panier pa ON pa.id = pl.id_panier
+                  JOIN produit p ON p.id = pl.id_produit
+                 WHERE pa.id_utilisateur = p_id_utilisateur
+                 GROUP BY p.id_boutique);
 
-        p_tva       := ROUND(p_total_ht * c_taux_tva, 2);
         p_total_ttc := p_total_ht + p_tva;
     END calculer_totaux;
 
@@ -138,10 +161,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_panier AS
         v_curseur SYS_REFCURSOR;
     BEGIN
         OPEN v_curseur FOR
-            SELECT p.id AS id_produit, p.nom, b.nom AS boutique, pl.quantite, p.stock,
+            SELECT p.id AS id_produit, p.nom, p.id_boutique, b.nom AS boutique, pl.quantite, p.stock,
                    pkg_catalogue.prix_courant(p.id) AS prix_unitaire_ht,
+                   pkg_catalogue.prix_courant_ttc(p.id) AS prix_unitaire_ttc,
                    pkg_catalogue.prix_courant(p.id) * pl.quantite AS total_ligne_ht,
-                   CASE WHEN p.statut = 'ACTIF' AND p.stock >= pl.quantite THEN 1 ELSE 0 END AS disponible
+                   CASE WHEN p.statut = 'ACTIF' AND b.statut = 'VALIDEE' AND p.stock >= pl.quantite
+                        THEN 1 ELSE 0 END AS disponible
               FROM panier_ligne pl
               JOIN panier pa   ON pa.id = pl.id_panier
               JOIN produit p   ON p.id = pl.id_produit

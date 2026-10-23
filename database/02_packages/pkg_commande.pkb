@@ -8,6 +8,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_commande AS
         stock            produit.stock%TYPE,
         statut           produit.statut%TYPE,
         statut_boutique  boutique.statut%TYPE,
+        id_vendeur       boutique.id_vendeur%TYPE,
         id_boutique      produit.id_boutique%TYPE,
         prix_unitaire    produit.prix_ht%TYPE);
 
@@ -17,20 +18,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_commande AS
     -- Tableau associatif id_boutique → id_commande : il "regroupe" les lignes
     -- par boutique sans requête supplémentaire
     TYPE t_commande_par_boutique IS TABLE OF commande.id%TYPE INDEX BY PLS_INTEGER;
-
-    -- Curseur explicite. FOR UPDATE OF p.stock verrouille UNIQUEMENT les lignes
-    -- de PRODUIT concernées, dès l'OPEN : deux clients qui achètent le même
-    -- produit au même moment passent l'un après l'autre, et le second voit le
-    -- stock déjà décrémenté par le premier.
-    CURSOR c_panier(p_id_client NUMBER) IS
-        SELECT p.id, p.nom, pl.quantite, p.stock, p.statut, b.statut, p.id_boutique, NULL
-          FROM panier_ligne pl
-          JOIN panier pa  ON pa.id = pl.id_panier
-          JOIN produit p  ON p.id = pl.id_produit
-          JOIN boutique b ON b.id = p.id_boutique
-         WHERE pa.id_utilisateur = p_id_client
-         ORDER BY p.id
-           FOR UPDATE OF p.stock;
 
     -- -------------------------------------------------------------------------
     PROCEDURE verifier_client_et_adresse(
@@ -69,6 +56,24 @@ CREATE OR REPLACE PACKAGE BODY pkg_commande AS
         p_cvv            IN  VARCHAR2 DEFAULT NULL,
         p_reference      OUT VARCHAR2)
     IS
+        -- Curseur DÉCLARÉ DANS LA PROCÉDURE, et non au niveau du package : un
+        -- curseur (ou une variable) de package est un ÉTAT de session. Avec les
+        -- connexions persistantes de PHP, recompiler un package qui a un état
+        -- fait échouer une fois chaque session ouverte (ORA-04068).
+        -- Curseur explicite. FOR UPDATE OF p.stock verrouille UNIQUEMENT les lignes
+        -- de PRODUIT concernées, dès l'OPEN : deux clients qui achètent le même
+        -- produit au même moment passent l'un après l'autre, et le second voit le
+        -- stock déjà décrémenté par le premier.
+        CURSOR c_panier(p_id_client NUMBER) IS
+            SELECT p.id, p.nom, pl.quantite, p.stock, p.statut, b.statut, b.id_vendeur, p.id_boutique, NULL
+              FROM panier_ligne pl
+              JOIN panier pa  ON pa.id = pl.id_panier
+              JOIN produit p  ON p.id = pl.id_produit
+              JOIN boutique b ON b.id = p.id_boutique
+             WHERE pa.id_utilisateur = p_id_client
+             ORDER BY p.id
+               FOR UPDATE OF p.stock;
+
         v_lignes     t_lignes;
         v_commandes  t_commande_par_boutique;
         v_id_boutique PLS_INTEGER;
@@ -96,6 +101,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_commande AS
             IF v_lignes(i).statut <> 'ACTIF' OR v_lignes(i).statut_boutique <> 'VALIDEE' THEN
                 pkg_erreurs.lever(pkg_erreurs.c_produit_indisponible,
                     v_lignes(i).nom || ' n''est plus en vente.');
+            END IF;
+            -- Le panier a pu être rempli avant que l'utilisateur ne devienne vendeur
+            IF v_lignes(i).id_vendeur = p_id_client THEN
+                pkg_erreurs.lever(pkg_erreurs.c_non_proprietaire,
+                    'Vous ne pouvez pas acheter les produits de votre propre boutique (' || v_lignes(i).nom || ').');
             END IF;
             IF v_lignes(i).quantite > v_lignes(i).stock THEN
                 pkg_erreurs.lever(pkg_erreurs.c_stock_insuffisant,
