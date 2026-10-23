@@ -152,19 +152,34 @@ CREATE OR REPLACE PACKAGE BODY pkg_annonce AS
     END modifier;
 
     FUNCTION contexte_risque(p_id_utilisateur IN NUMBER, p_id_categorie IN NUMBER) RETURN SYS_REFCURSOR IS
-        v_curseur SYS_REFCURSOR;
+        v_curseur   SYS_REFCURSOR;
+        v_categorie categorie.id%TYPE := p_id_categorie;
+        v_parent    categorie.id_parent%TYPE;
+        v_median    NUMBER;
+        v_nb        NUMBER;
     BEGIN
+        -- On remonte l'arbre des catégories tant que l'échantillon est trop petit
+        -- pour qu'une médiane ait un sens (racine atteinte : on garde ce qu'on a)
+        LOOP
+            SELECT MEDIAN(a.prix), COUNT(*) INTO v_median, v_nb
+              FROM annonce a
+             WHERE a.statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE')
+               AND a.id_categorie IN (SELECT c.id FROM categorie c
+                                       START WITH c.id = v_categorie
+                                     CONNECT BY PRIOR c.id = c.id_parent);
+            EXIT WHEN v_nb >= c_annonces_min_mediane;
+            BEGIN
+                SELECT id_parent INTO v_parent FROM categorie WHERE id = v_categorie;
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN v_parent := NULL;   -- catégorie inconnue
+            END;
+            EXIT WHEN v_parent IS NULL;
+            v_categorie := v_parent;
+        END LOOP;
+
         OPEN v_curseur FOR
-            SELECT (SELECT MEDIAN(a.prix) FROM annonce a
-                     WHERE a.statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE')
-                       AND a.id_categorie IN (SELECT c.id FROM categorie c
-                                               START WITH c.id = p_id_categorie
-                                             CONNECT BY PRIOR c.id = c.id_parent)) AS prix_median,
-                   (SELECT COUNT(*) FROM annonce a
-                     WHERE a.statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE')
-                       AND a.id_categorie IN (SELECT c.id FROM categorie c
-                                               START WITH c.id = p_id_categorie
-                                             CONNECT BY PRIOR c.id = c.id_parent)) AS nb_annonces,
+            SELECT v_median AS prix_median,
+                   v_nb AS nb_annonces,
                    (SELECT COUNT(*) FROM annonce a
                      WHERE a.id_utilisateur = p_id_utilisateur
                        AND a.date_publication > SYSDATE - 1) AS annonces_24h,

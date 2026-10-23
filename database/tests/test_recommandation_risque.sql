@@ -112,10 +112,26 @@ BEGIN
     pkg_test.verifier('contexte_risque (annonce) : médiane des sous-catégories',
                       TO_NUMBER(pkg_test.valeur(v_curseur, 'NB_ANNONCES', 1)) >= 3);
     SELECT MEDIAN(prix) INTO v_nombre FROM annonce
-     WHERE id_categorie = 3 AND statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE');
-    v_curseur := pkg_annonce.contexte_risque(c_auteur, 3);
-    pkg_test.verifier_egal('contexte_risque (annonce) : MEDIAN des smartphones', v_nombre,
+     WHERE id_categorie = 11 AND statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE');
+    v_curseur := pkg_annonce.contexte_risque(c_auteur, 11);
+    pkg_test.verifier_egal('contexte_risque (annonce) : MEDIAN de l''électroménager (3 annonces)', v_nombre,
                            TO_NUMBER(pkg_test.valeur(v_curseur, 'PRIX_MEDIAN', 1)));
+
+    -- Smartphones : moins de 3 annonces publiées → médiane de « Téléphones & tablettes »
+    SELECT COUNT(*) INTO v_nombre FROM annonce WHERE id_categorie = 3 AND statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE');
+    pkg_test.verifier('données de démo : moins de 3 annonces de smartphones', v_nombre < 3, v_nombre || ' annonce(s)');
+    SELECT MEDIAN(prix), COUNT(*) INTO v_nombre, v_nb FROM annonce
+     WHERE statut IN ('EN_LIGNE', 'VENDUE', 'EXPIREE')
+       AND id_categorie IN (SELECT id FROM categorie START WITH id = 2 CONNECT BY PRIOR id = id_parent);
+    v_curseur := pkg_annonce.contexte_risque(c_auteur, 3);
+    pkg_test.verifier_egal('contexte_risque (annonce) : trop peu d''annonces → catégorie parente (nombre)', v_nb,
+                           TO_NUMBER(pkg_test.valeur(v_curseur, 'NB_ANNONCES', 1)));
+    v_curseur := pkg_annonce.contexte_risque(c_auteur, 3);
+    pkg_test.verifier_egal('contexte_risque (annonce) : trop peu d''annonces → catégorie parente (médiane)', v_nombre,
+                           TO_NUMBER(pkg_test.valeur(v_curseur, 'PRIX_MEDIAN', 1)));
+    v_curseur := pkg_annonce.contexte_risque(c_auteur, -1);
+    pkg_test.verifier_egal('contexte_risque (annonce) : catégorie inconnue → aucune annonce', 0,
+                           TO_NUMBER(pkg_test.valeur(v_curseur, 'NB_ANNONCES', 1)));
 
     pkg_annonce.publier(c_auteur, 3, 'Smartphone de test', 'Rien à signaler.', 2000, 'Rabat', 10, v_id);
     v_curseur := pkg_annonce.contexte_risque(c_auteur, 3);

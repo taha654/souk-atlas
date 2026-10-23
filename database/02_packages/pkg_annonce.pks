@@ -12,6 +12,8 @@ CREATE OR REPLACE PACKAGE pkg_annonce AS
     c_duree_jours       CONSTANT PLS_INTEGER := 30;
     -- À partir de ce score (calculé par le moteur C++), l'annonce attend un modérateur
     c_seuil_moderation  CONSTANT PLS_INTEGER := 60;
+    -- Taille minimale de l'échantillon pour juger un prix (même valeur que ReglePrixAnormal en C++)
+    c_annonces_min_mediane CONSTANT PLS_INTEGER := 3;
 
     PROCEDURE publier(
         p_id_utilisateur IN  NUMBER,
@@ -49,7 +51,9 @@ CREATE OR REPLACE PACKAGE pkg_annonce AS
 
     -- Données dont le moteur C++ a besoin pour noter une annonce (une seule ligne) :
     --   prix_median, nb_annonces : annonces de la catégorie et de ses sous-catégories
-    --                              (MEDIAN résiste mieux que AVG aux prix extrêmes)
+    --                              (MEDIAN résiste mieux que AVG aux prix extrêmes) ;
+    --                              moins de c_annonces_min_mediane annonces : on remonte
+    --                              à la catégorie parente (Smartphones → Téléphones et tablettes)
     --   annonces_24h             : annonces publiées par l'auteur sur 24 h
     --   anciennete_jours         : âge du compte
     FUNCTION contexte_risque(p_id_utilisateur IN NUMBER, p_id_categorie IN NUMBER) RETURN SYS_REFCURSOR;
