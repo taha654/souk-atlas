@@ -15,7 +15,9 @@ use App\Core\Erreurs\ErreurMetier;
 use App\Core\Erreurs\MethodeNonAutorisee;
 use App\Core\Erreurs\RouteIntrouvable;
 use App\Core\Router;
+use App\Models\Commande;
 use App\Models\FiltresCatalogue;
+use App\Services\Mailer;
 use App\Models\Produit;
 use App\Models\Utilisateur;
 
@@ -189,6 +191,40 @@ verifier('pages_a_afficher : peu de pages', pages_a_afficher(1, 3) === [1, 2, 3]
 verifier('pages_a_afficher : 1 … 4 5 6 7 8 … 20', pages_a_afficher(6, 20) === [1, null, 4, 5, 6, 7, 8, null, 20]);
 verifier('nomCourt : prénom + initiale', Produit::nomCourt('Fatima Zahra Bennani') === 'Fatima Zahra B.'
     && Produit::nomCourt('Amine') === 'Amine');
+
+// ----------------------------------------------------------------- Commande
+echo "--- Formulaire de commande\n";
+$commandeValide = ['mode' => 'CARTE', 'adresse' => '12 rue des Orangers', 'ville' => 'Rabat', 'telephone' => '0612345678',
+       'carte' => '4111 1111 1111 1111', 'mois' => '12', 'annee' => '2030', 'cvv' => '123'];
+verifier('commande par carte valide', Commande::validerFormulaire($commandeValide) === [],
+    json_encode(Commande::validerFormulaire($commandeValide), JSON_UNESCAPED_UNICODE));
+verifier('livraison : la carte n\'est pas exigée',
+    Commande::validerFormulaire(['mode' => 'LIVRAISON', 'carte' => '', 'cvv' => ''] + $commandeValide) === []);
+$e = Commande::validerFormulaire(['adresse' => 'ici', 'ville' => '', 'telephone' => '123'] + $commandeValide);
+verifier('adresse, ville et téléphone invalides détectés', isset($e['adresse'], $e['ville'], $e['telephone']));
+verifier('mode de paiement inconnu', isset(Commande::validerFormulaire(['mode' => 'BITCOIN'] + $commandeValide)['mode']));
+verifier('CVV à 2 chiffres refusé', isset(Commande::validerFormulaire(['cvv' => '12'] + $commandeValide)['cvv']));
+verifier('carte avec lettres refusée', isset(Commande::validerFormulaire(['carte' => '4111-abcd-1111'] + $commandeValide)['carte']));
+verifier('expiration manquante', isset(Commande::validerFormulaire(['mois' => ''] + $commandeValide)['expiration']));
+
+echo "--- Mailer simulé\n";
+$dossier = sys_get_temp_dir() . '/souk-test-mails-' . bin2hex(random_bytes(3));
+$mailer = new Mailer($dossier);
+$fichier = $mailer->envoyer('client@exemple.ma', 'Votre achat — référence ACH-1', "Bonjour,\nmerci.");
+$contenu = (string) file_get_contents($fichier);
+verifier('fichier .eml écrit', is_file($fichier) && str_ends_with($fichier, '.eml'));
+// Un en-tête d'email doit être en ASCII : la partie accentuée est encodée (RFC 2047),
+// les mots ASCII du début peuvent rester en clair ("Subject: Votre achat =?UTF-8?B?…")
+preg_match('/^Subject: .*(?:\r\n .*)*/m', $contenu, $sujet);
+verifier('sujet accentué encodé (RFC 2047), en-tête 100 % ASCII',
+    str_contains($sujet[0] ?? '', '=?UTF-8?B?') && preg_match('/^[\x20-\x7E\r\n]+$/', $sujet[0] ?? '') === 1);
+verifier('corps en UTF-8 conservé', str_contains($contenu, "Bonjour,\r\nmerci."));
+verifierException('injection d\'en-tête dans le sujet refusée', InvalidArgumentException::class,
+    fn () => $mailer->envoyer('client@exemple.ma', "Sujet\r\nBcc: pirate@exemple.ma", 'x'));
+verifierException('adresse invalide refusée', InvalidArgumentException::class,
+    fn () => $mailer->envoyer('pas-une-adresse', 'Sujet', 'x'));
+array_map('unlink', glob($dossier . '/*.eml'));
+rmdir($dossier);
 
 echo "\nBILAN PHP : $ok OK, $echecs ÉCHEC\n";
 exit($echecs === 0 ? 0 : 1);

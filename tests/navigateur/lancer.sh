@@ -12,6 +12,17 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
+# Comptes créés par les tests (test-…@exemple.ma), commandes et stock : remis en ordre à la fin
+nettoyer() {
+    docker compose exec -T oracle bash -c \
+        'sqlplus -s -L "$APP_USER/$APP_USER_PASSWORD@//localhost/FREEPDB1"' > /dev/null <<'SQL'
+@/opt/souk/database/tests/nettoyer_comptes_test.sql
+EXIT
+SQL
+    grep -l '^To: test-' var/mails/*.eml 2>/dev/null | xargs -r rm -f
+}
+trap nettoyer EXIT
+
 # --user : fichiers créés (node_modules, captures) à votre nom, pas à root
 docker run --rm --init \
     --network souk-atlas_default \
