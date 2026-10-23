@@ -26,6 +26,8 @@ const THEMES = [
     'Beauté & santé'   => ['#a8475f', '#f8e1e7', 'flacon'],
     'Sport & loisirs'  => ['#1e6b3a', '#dcf1e3', 'ballon'],
     'Bébé & jouets'    => ['#a86a12', '#f9ecd6', 'etoile'],
+    'Véhicules'        => ['#2f4f4f', '#e2ecec', 'voiture'],
+    'Immobilier'       => ['#5a4a8a', '#e9e5f5', 'maison'],
 ];
 
 /** Pictogrammes : formes simples centrées sur (300, 175) */
@@ -45,6 +47,9 @@ function pictogramme(string $type, string $couleur): string
         'ballon' => "<circle cx='300' cy='175' r='85' fill='$couleur'/>"
             . "<path d='M215 175 H385 M300 90 V260' stroke='#fff' stroke-width='6' opacity='.85'/>"
             . "<circle cx='300' cy='175' r='45' fill='none' stroke='#fff' stroke-width='6' opacity='.85'/>",
+        'voiture' => "<path d='M215 210 L235 160 Q240 148 255 148 L345 148 Q360 148 365 160 L385 210 L385 245 L215 245 Z' fill='$couleur'/>"
+            . "<rect x='250' y='162' width='100' height='38' rx='6' fill='#fff' opacity='.85'/>"
+            . "<circle cx='250' cy='248' r='20' fill='#1d1d1f'/><circle cx='350' cy='248' r='20' fill='#1d1d1f'/>",
         default => "<polygon points='300,88 324,148 388,150 337,190 356,252 300,215 244,252 263,190 212,150 276,148' "
             . "fill='$couleur'/>",
     };
@@ -96,15 +101,23 @@ $photos = $db->lignes(
               START WITH c.id = p.id_categorie CONNECT BY c.id = PRIOR c.id_parent) AS racine
        FROM produit_photo ph JOIN produit p ON p.id = ph.id_produit
       WHERE ph.chemin LIKE '/assets/img/produits/%'
-      ORDER BY ph.chemin",
+     UNION ALL
+     -- Annonces : une illustration chacune, même principe
+     SELECT ph.chemin, ph.ordre, a.titre, 1,
+            (SELECT c.nom FROM categorie c WHERE c.id_parent IS NULL
+              START WITH c.id = a.id_categorie CONNECT BY c.id = PRIOR c.id_parent)
+       FROM annonce_photo ph JOIN annonce a ON a.id = ph.id_annonce
+      WHERE ph.chemin LIKE '/assets/img/annonces/%'
+      ORDER BY 1",
 );
 
-$dossier = $racine . '/public/assets/img/produits';
-if (!is_dir($dossier)) {
-    mkdir($dossier, 0755, true);
+foreach (['produits', 'annonces'] as $sousDossier) {
+    if (!is_dir($racine . '/public/assets/img/' . $sousDossier)) {
+        mkdir($racine . '/public/assets/img/' . $sousDossier, 0755, true);
+    }
 }
 foreach ($photos as $photo) {
     file_put_contents($racine . '/public' . $photo['CHEMIN'],
         svg($photo['NOM'], (string) $photo['RACINE'], (int) $photo['ORDRE'], (int) $photo['NB_VUES']));
 }
-echo count($photos) . " illustration(s) générée(s) dans public/assets/img/produits/\n";
+echo count($photos) . " illustration(s) générée(s) dans public/assets/img/produits/ et annonces/\n";
