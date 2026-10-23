@@ -1,59 +1,95 @@
 <?php
-// Page de vérification : la chaîne complète navigateur → PHP → Oracle fonctionne.
-// Ce fichier deviendra le contrôleur frontal à l'étape 2.
-
+// =============================================================================
+// Contrôleur frontal : TOUTES les requêtes (sauf les fichiers de assets/)
+// arrivent ici, grâce à FallbackResource dans la configuration d'Apache.
+//
+// Déroulé : configuration → base → session → utilisateur → CSRF → route
+//           → action du contrôleur → réponse (ou page d'erreur).
+// =============================================================================
 declare(strict_types=1);
 
-function e(string $texte): string
-{
-    // Échappement HTML : aucune donnée n'est affichée sans passer par ici
-    return htmlspecialchars($texte, ENT_QUOTES, 'UTF-8');
+use App\Core\Auth;
+use App\Core\Autoloader;
+use App\Core\Config;
+use App\Core\Csrf;
+use App\Core\Database;
+use App\Core\Erreurs\AccesRefuse;
+use App\Core\Erreurs\MethodeNonAutorisee;
+use App\Core\Erreurs\NonConnecte;
+use App\Core\Erreurs\RouteIntrouvable;
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\Router;
+use App\Core\Session;
+use App\Core\View;
+
+$dossierApp = dirname(__DIR__) . '/app';
+require $dossierApp . '/Core/Autoloader.php';
+require $dossierApp . '/Core/fonctions.php';
+Autoloader::enregistrer($dossierApp);
+Config::charger(require $dossierApp . '/config.php');
+
+$request = Request::depuisGlobales();
+
+// En-têtes de sécurité, envoyés avec chaque page
+header('X-Content-Type-Options: nosniff');           // le navigateur respecte le Content-Type annoncé
+header('X-Frame-Options: DENY');                     // la page ne peut pas être affichée dans une iframe (clickjacking)
+header('Referrer-Policy: same-origin');              // l'URL complète n'est pas transmise aux autres sites
+// CSP : seuls nos propres fichiers CSS, JS et images sont autorisés. Un script
+// injecté directement dans la page (<script>…</script>) ne s'exécuterait pas.
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; object-src 'none'; "
+    . "base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+
+/** Page d'erreur HTML avec le bon code HTTP */
+$pageErreur = static function (int $statut, string $titre, string $message): Response {
+    return Response::html(View::rendre('erreurs/erreur',
+        ['statut' => $statut, 'titre_erreur' => $titre, 'message' => $message], $titre), $statut);
+};
+
+try {
+    $db = new Database(Config::get('db'));
+    Session::demarrer(Config::get('session'), $request->https);
+    Auth::charger($db);
+    $db->definirUtilisateur(Auth::utilisateur()['id'] ?? null);
+
+    // CSRF : vérifié ici pour TOUS les POST, avant même de chercher la route.
+    // Impossible d'oublier la vérification dans un contrôleur.
+    if ($request->methode === 'POST' && !Csrf::verifier($request->post[Csrf::CHAMP] ?? null)) {
+        throw new AccesRefuse('Jeton CSRF absent ou invalide');
+    }
+
+    $router = new Router();
+    (require $dossierApp . '/routes.php')($router);
+    $route = $router->trouver($request->methode, $request->chemin);
+
+    // "AuthController@connecter" → new App\Controllers\AuthController(...)->connecter()
+    [$classe, $action] = explode('@', $route['action']);
+    $classe = 'App\\Controllers\\' . $classe;
+    $controleur = new $classe($request, $db);
+    $reponse = $controleur->$action(...$route['parametres']);
+
+} catch (NonConnecte) {
+    $retour = $request->methode === 'GET' ? '?retour=' . rawurlencode($request->chemin) : '';
+    if (Session::vientDExpirer()) {
+        Session::flash('info', 'Votre session a expiré après une période d\'inactivité. Reconnectez-vous.');
+    }
+    $reponse = Response::redirection('/connexion' . $retour);
+} catch (AccesRefuse $erreur) {
+    $message = str_starts_with($erreur->getMessage(), 'Jeton CSRF')
+        ? 'Le formulaire a expiré ou ne vient pas de ce site. Rechargez la page et réessayez.'
+        : 'Vous n\'avez pas accès à cette page.';
+    $reponse = $pageErreur(403, 'Accès refusé', $message);
+} catch (RouteIntrouvable) {
+    $reponse = $pageErreur(404, 'Page introuvable', 'Cette page n\'existe pas ou a été déplacée.');
+} catch (MethodeNonAutorisee $erreur) {
+    $reponse = $pageErreur(405, 'Méthode non autorisée', 'Cette adresse ne s\'utilise pas ainsi.');
+    $reponse = new Response($reponse->corps, 405, $reponse->entetes + ['Allow' => implode(', ', $erreur->methodesAutorisees)]);
+} catch (\Throwable $erreur) {
+    // Erreur imprévue : le détail va dans le journal du serveur, jamais chez un visiteur en production
+    error_log('[Souk Atlas] ' . $erreur::class . ' : ' . $erreur->getMessage() . ' dans '
+        . $erreur->getFile() . ':' . $erreur->getLine());
+    $detail = Config::get('env') === 'dev' ? ' (' . $erreur::class . ' : ' . $erreur->getMessage() . ')' : '';
+    $reponse = $pageErreur(500, 'Erreur interne', 'Une erreur est survenue. Réessayez plus tard.' . $detail);
 }
 
-$message = null;
-$version = null;
-$erreur  = null;
-
-// AL32UTF8 : l'encodage UTF-8 d'Oracle, pour que les accents arrivent intacts
-$connexion = @oci_connect(getenv('DB_USER'), getenv('DB_PASSWORD'), getenv('DB_DSN'), 'AL32UTF8');
-
-if ($connexion === false) {
-    $erreur = oci_error()['message'] ?? 'Connexion impossible';
-} else {
-    // Étape 1 : le vrai schéma remplace la table HELLO de l'étape 0
-    $requete = oci_parse($connexion,
-        "SELECT (SELECT COUNT(*) FROM produit WHERE statut = 'ACTIF') AS produits,
-                (SELECT COUNT(*) FROM annonce WHERE statut = 'EN_LIGNE') AS annonces,
-                pkg_catalogue.chemin_categorie(:id_categorie) AS chemin
-           FROM dual");
-    $idCategorie = 3;
-    oci_bind_by_name($requete, ':id_categorie', $idCategorie); // variable liée, jamais de concaténation
-    oci_execute($requete);
-    $ligne = oci_fetch_assoc($requete);
-    $message = sprintf('%d produits en vente, %d annonces en ligne. Catégorie n°3 : %s',
-        $ligne['PRODUITS'], $ligne['ANNONCES'], $ligne['CHEMIN']);
-
-    $requete = oci_parse($connexion, 'SELECT banner_full FROM v$version');
-    oci_execute($requete);
-    $version = oci_fetch_assoc($requete)['BANNER_FULL'] ?? '';
-
-    oci_close($connexion);
-}
-?>
-<!doctype html>
-<html lang="fr">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Souk Atlas — Hello</title>
-</head>
-<body>
-    <h1>Souk Atlas</h1>
-    <?php if ($erreur !== null): ?>
-        <p><strong>Erreur Oracle :</strong> <?= e($erreur) ?></p>
-    <?php else: ?>
-        <p><strong>Message lu dans Oracle :</strong> <?= e($message) ?></p>
-        <p><small><?= e($version) ?> — PHP <?= e(PHP_VERSION) ?></small></p>
-    <?php endif; ?>
-</body>
-</html>
+$reponse->envoyer();
