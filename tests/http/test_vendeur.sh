@@ -12,11 +12,7 @@ cd "$(dirname "$0")/../.."
 source tests/http/outils.sh
 
 nettoyer() {
-    # Fichiers des photos des produits de test, puis les données
-    for chemin in $(sql "SELECT ph.chemin FROM produit_photo ph JOIN produit p ON p.id = ph.id_produit JOIN boutique b ON b.id = p.id_boutique JOIN utilisateur u ON u.id = b.id_vendeur WHERE u.email LIKE 'test-%' AND ph.chemin LIKE '/uploads/%';" | sed 's|/uploads|\n/uploads|g'); do
-        rm -f "public$chemin"
-    done
-    supprimer_comptes_test
+    supprimer_comptes_test   # données ET fichiers des photos (tests/http/outils.sh)
     rm -rf "$TMP"
 }
 supprimer_comptes_test

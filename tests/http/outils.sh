@@ -28,14 +28,26 @@ sql() {
         'sqlplus -s -L "$APP_USER/$APP_USER_PASSWORD@//localhost/FREEPDB1"' <<< "SET PAGESIZE 0 FEEDBACK OFF HEADING OFF
 $1" | tr -d ' \t\r\n'
 }
-# Supprime les comptes test-…@exemple.ma (EXIT : sinon SQL*Plus attend la suite au clavier)
+# Supprime les comptes test-…@exemple.ma et tout ce qui en dépend, y compris les
+# FICHIERS des photos qu'ils ont envoyées (produits et annonces)
 supprimer_comptes_test() {
+    docker compose exec -T oracle bash -c 'sqlplus -s -L "$APP_USER/$APP_USER_PASSWORD@//localhost/FREEPDB1"' <<'SQL' \
+        | { grep '^/uploads/' || true; } | while read -r chemin; do rm -f "public$chemin"; done   # grep sans résultat : pas une erreur
+SET PAGESIZE 0 FEEDBACK OFF HEADING OFF LINESIZE 300
+SELECT ph.chemin FROM produit_photo ph JOIN produit p ON p.id = ph.id_produit JOIN boutique b ON b.id = p.id_boutique
+  JOIN utilisateur u ON u.id = b.id_vendeur WHERE u.email LIKE 'test-%' AND ph.chemin LIKE '/uploads/%'
+UNION ALL
+SELECT ph.chemin FROM annonce_photo ph JOIN annonce a ON a.id = ph.id_annonce
+  JOIN utilisateur u ON u.id = a.id_utilisateur WHERE u.email LIKE 'test-%' AND ph.chemin LIKE '/uploads/%';
+EXIT
+SQL
+    # EXIT : sans lui, SQL*Plus attendrait la suite au clavier
     docker compose exec -T oracle bash -c \
         'sqlplus -s -L "$APP_USER/$APP_USER_PASSWORD@//localhost/FREEPDB1"' > /dev/null <<'SQL'
 @/opt/souk/database/tests/nettoyer_comptes_test.sql
 EXIT
 SQL
-    grep -l '^To: test-' var/mails/*.eml 2>/dev/null | xargs -r rm -f
+    grep -l '^To: test-' var/mails/*.eml 2>/dev/null | xargs -r rm -f || true
 }
 
 # Jeton CSRF lu dans <meta name="csrf-token"> (présente sur toutes les pages)
