@@ -66,6 +66,20 @@ final class Produit
     }
 
     /**
+     * Identifiant et nom de chaque produit visible (au plus 5000 : au-delà, la
+     * recherche tolérante devrait se faire côté serveur).
+     *
+     * @return list<array{id: int, nom: string}>
+     */
+    public function titres(): array
+    {
+        return array_map(static fn (array $l) => ['id' => (int) $l['ID'], 'nom' => $l['NOM']], $this->db->lignes(
+            "SELECT p.id, p.nom FROM produit p JOIN boutique b ON b.id = p.id_boutique
+              WHERE p.statut = 'ACTIF' AND b.statut = 'VALIDEE'
+              ORDER BY p.nb_avis DESC, p.id FETCH FIRST 5000 ROWS ONLY"));
+    }
+
+    /**
      * Fiche d'un produit visible (produit ACTIF d'une boutique VALIDEE), ou null.
      *
      * @return array<string, mixed>|null

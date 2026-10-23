@@ -37,6 +37,17 @@ final class CatalogueApiController extends Controller
         ]);
     }
 
+    /**
+     * GET /api/titres → [{"id": 1, "nom": "Smartphone Samsung…"}, …] : tous les
+     * produits visibles, pour la recherche tolérante aux fautes faite DANS le
+     * navigateur (module WebAssembly). Chargé une fois, gardé 5 minutes en cache.
+     */
+    public function titres(): Response
+    {
+        return Response::json((new Produit($this->db))->titres())
+            ->avecEntete('Cache-Control', 'public, max-age=300');
+    }
+
     /** GET /api/suggestions?q=sam → [{"id": 1, "nom": "Smartphone Samsung…"}, …] */
     public function suggestions(): Response
     {

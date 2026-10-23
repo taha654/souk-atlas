@@ -391,3 +391,7 @@ textarea { width: 100%; padding: 0.6rem; font: inherit; border: 1px solid var(--
 /* ----- Jetons d'API (étape 9) ----- */
 code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.9em; overflow-wrap: anywhere; }
 .jeton { width: 100%; padding: 0.5rem; border: 1px solid var(--bordure); border-radius: var(--rayon); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.85rem; }
+
+/* ----- WebAssembly (étape 10) ----- */
+.suggestion__approchee { color: var(--texte-doux); font-size: 0.85em; font-style: italic; }
+.photo-allegee { font-size: 0.9rem; margin: 0.25rem 0 0.5rem; color: var(--succes); }

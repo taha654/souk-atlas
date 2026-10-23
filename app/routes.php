@@ -115,4 +115,5 @@ return static function (Router $router): void {
     $router->post('/api/panier', 'Api\\PanierApiController@operation');
     $router->get('/api/produits', 'Api\\CatalogueApiController@produits');
     $router->get('/api/suggestions', 'Api\\CatalogueApiController@suggestions');
+    $router->get('/api/titres', 'Api\\CatalogueApiController@titres');
 };

@@ -62,11 +62,15 @@ $invalide = static fn (string $c): string => isset($erreurs[$c]) ? ' aria-invali
             <?php if (count($annonce['photos']) < 6): ?>
                 <form method="post" action="/mes-annonces/<?= e($annonce['id']) ?>/photos" enctype="multipart/form-data">
                     <?= Csrf::champ() ?>
-                    <label for="photo">Ajouter une photo <span class="facultatif">(JPEG, PNG ou WebP, 5 Mo max.)</span></label>
-                    <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required data-taille-max="<?= Upload::TAILLE_MAX ?>">
+                    <label for="photo">Ajouter une photo <span class="facultatif">(JPEG, PNG ou WebP, 5 Mo max. ;
+                        les grandes photos sont allégées automatiquement)</span></label>
+                    <?php /* data-alleger : réduction dans le navigateur avant l'envoi (photos.js, WebAssembly) */ ?>
+                    <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required
+                           data-taille-max="<?= Upload::TAILLE_MAX ?>" data-alleger>
                     <button type="submit" class="bouton">Envoyer</button>
                 </form>
             <?php endif; ?>
         </aside>
     <?php endif; ?>
 </div>
+<script type="module" src="/assets/js/photos.js"></script>

@@ -40,8 +40,11 @@ header('X-Frame-Options: DENY');                     // la page ne peut pas êtr
 header('Referrer-Policy: same-origin');              // l'URL complète n'est pas transmise aux autres sites
 // CSP : seuls nos propres fichiers CSS, JS et images sont autorisés. Un script
 // injecté directement dans la page (<script>…</script>) ne s'exécuterait pas.
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; object-src 'none'; "
-    . "base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
+// 'wasm-unsafe-eval' autorise la compilation du module WebAssembly (étape 10),
+// et rien d'autre : eval() et new Function() restent interdits au JavaScript.
+// blob: pour les images : aperçu d'une photo allégée avant son envoi.
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; "
+    . "img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'");
 
 /** Erreur avec le bon code HTTP : en JSON pour l'API, en page HTML sinon */
 $pageErreur = static function (int $statut, string $titre, string $message) use ($request): Response {
