@@ -25,8 +25,14 @@ final class Database
     /** @param array{utilisateur: string, mot_de_passe: string, dsn: string} $config */
     public function __construct(array $config)
     {
-        // AL32UTF8 : l'encodage UTF-8 d'Oracle, pour que les accents arrivent intacts
-        $connexion = @oci_connect($config['utilisateur'], $config['mot_de_passe'], $config['dsn'], 'AL32UTF8');
+        // oci_pconnect : connexion PERSISTANTE, gardée ouverte par le processus Apache
+        // d'une requête à l'autre. Avec oci_connect, chaque requête ouvrait puis
+        // fermait une connexion (un processus serveur Oracle à chaque fois) : sous
+        // plusieurs requêtes simultanées, le listener saturait (ORA-12516).
+        // Sans risque pour les transactions : OCI8 fait ROLLBACK de ce qui n'a pas
+        // été validé à la fin de chaque script.
+        // AL32UTF8 : l'encodage UTF-8 d'Oracle, pour que les accents arrivent intacts.
+        $connexion = @oci_pconnect($config['utilisateur'], $config['mot_de_passe'], $config['dsn'], 'AL32UTF8');
         if ($connexion === false) {
             $erreur = oci_error();
             throw new ErreurBaseDeDonnees('Connexion à Oracle impossible : ' . ($erreur['message'] ?? '?'));
@@ -49,6 +55,8 @@ final class Database
      */
     public function definirUtilisateur(?int $idUtilisateur): void
     {
+        // Appelée à CHAQUE requête, même pour un visiteur (identifiant vide) : la
+        // connexion persistante garderait sinon l'utilisateur de la requête précédente
         oci_set_client_identifier($this->connexion, $idUtilisateur === null ? '' : (string) $idUtilisateur);
     }
 
@@ -101,6 +109,48 @@ final class Database
     public function appeler(string $plsql, array &$parametres = []): void
     {
         oci_free_statement($this->executer($plsql, $parametres));
+    }
+
+    /**
+     * Lit toutes les lignes d'un SYS_REFCURSOR renvoyé par une fonction de package.
+     * Le curseur est ouvert CÔTÉ ORACLE ; PHP reçoit une "poignée" (oci_new_cursor)
+     * qu'il exécute puis parcourt comme une requête ordinaire.
+     *
+     *   $db->curseur('pkg_catalogue.rechercher(p_texte => :texte)', ['texte' => 'samsung']);
+     *
+     * @param string $appel  appel de fonction PL/SQL, sans BEGIN ni ":=" (ajoutés ici)
+     * @param array<string, scalar|null> $parametres
+     * @return list<array<string, mixed>>
+     */
+    public function curseur(string $appel, array $parametres = []): array
+    {
+        $curseur = oci_new_cursor($this->connexion);
+        $requete = oci_parse($this->connexion, 'BEGIN :resultat_curseur := ' . $appel . '; END;');
+        if ($curseur === false || $requete === false) {
+            throw new ErreurBaseDeDonnees('Appel invalide : ' . $appel);
+        }
+        // Un nom de variable liée doit commencer par une lettre (":_x" est refusé : ORA-01036)
+        oci_bind_by_name($requete, ':resultat_curseur', $curseur, -1, OCI_B_CURSOR);
+        foreach ($parametres as $nom => &$valeur) {
+            oci_bind_by_name($requete, ':' . ltrim((string) $nom, ':'), $valeur, 4000);
+        }
+        unset($valeur);
+
+        try {
+            // 1er execute : appelle la fonction, qui ouvre le curseur ; 2e : le curseur lui-même
+            foreach ([$requete, $curseur] as $instruction) {
+                if (!@oci_execute($instruction, OCI_NO_AUTO_COMMIT)) {
+                    $erreur = oci_error($instruction) ?: ['code' => 0, 'message' => 'erreur inconnue'];
+                    throw self::traduire((int) $erreur['code'], (string) $erreur['message']);
+                }
+            }
+            oci_fetch_all($curseur, $lignes, 0, -1, OCI_FETCHSTATEMENT_BY_ROW | OCI_ASSOC);
+            return $lignes;
+        } finally {
+            // Un curseur non libéré reste ouvert côté Oracle (limite : OPEN_CURSORS)
+            oci_free_statement($curseur);
+            oci_free_statement($requete);
+        }
     }
 
     public function valider(): void
