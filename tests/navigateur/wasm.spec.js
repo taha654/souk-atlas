@@ -4,8 +4,8 @@
 //            une photo de 5 Mo part allégée.
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 /** Erreurs JavaScript : font échouer le test (sauf quand on provoque exprès une panne) */
 test.beforeEach(async ({ page }) => {
@@ -45,7 +45,7 @@ for (const [moteur, url] of [['WebAssembly', '/'], ['JavaScript', '/?moteur=js']
             await page.setViewportSize({ width: 1280, height: 600 });
             await chercher(page, 'smartphon samsng');
             await expect(option).toBeVisible();
-            await page.screenshot({ path: `${CAPTURES}/etape10-recherche-tolerante.png` });
+            await capturer(page, 'etape10-recherche-tolerante.png');
         }
     });
 }
@@ -123,7 +123,7 @@ for (const [moteur, suffixe] of [['WebAssembly', ''], ['JavaScript', '?moteur=js
         await expect(message).toHaveAttribute('data-moteur', moteur);
         const taille = await page.getByLabel(/Ajouter une photo/).evaluate((champ) => champ.files[0].size);
         expect(taille).toBeLessThan(1024 * 1024);   // moins d'1 Mo au lieu de plus de 5
-        if (moteur === 'WebAssembly') await page.screenshot({ path: `${CAPTURES}/etape10-photo-allegee.png` });
+        if (moteur === 'WebAssembly') await capturer(page, 'etape10-photo-allegee.png');
 
         // Ce qui part réellement sur le réseau
         const [envoi] = await Promise.all([

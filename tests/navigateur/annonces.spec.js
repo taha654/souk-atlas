@@ -3,8 +3,8 @@
 // Deux contextes de navigateur = deux personnes sur deux ordinateurs.
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 async function connecter(page, email) {
     await page.goto('/connexion');
@@ -22,12 +22,12 @@ test('filtres des annonces et fiche', async ({ page }) => {
     await page.getByLabel('Trier').selectOption('prix_desc');
     await expect(page).toHaveURL(/tri=prix_desc/);
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.screenshot({ path: `${CAPTURES}/etape6-annonces.png`, fullPage: true });
+    await capturer(page, 'etape6-annonces.png', { fullPage: true });
 
     await cartes.first().click();
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Se connecter pour contacter le vendeur' })).toBeVisible();
-    await page.screenshot({ path: `${CAPTURES}/etape6-fiche-annonce.png`, fullPage: true });
+    await capturer(page, 'etape6-fiche-annonce.png', { fullPage: true });
 });
 
 test('messagerie : le message apparaît chez l’autre sans rechargement', async ({ browser }) => {
@@ -53,6 +53,6 @@ test('messagerie : le message apparaît chez l’autre sans rechargement', async
     await expect(amine.locator('#fil-messages .message').last()).toContainText(texte, { timeout: 12_000 });
     expect(await amine.evaluate(() => window.__marqueur)).toBe(true);
     await amine.setViewportSize({ width: 1280, height: 900 });
-    await amine.screenshot({ path: `${CAPTURES}/etape6-messagerie.png`, fullPage: true });
+    await capturer(amine, 'etape6-messagerie.png', { fullPage: true });
     // Ce message est supprimé à la fin par lancer.sh (messages créés pendant les tests)
 });

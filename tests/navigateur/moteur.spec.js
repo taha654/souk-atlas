@@ -3,8 +3,8 @@
 // Critère : « Les recommandations s'affichent sur la fiche produit ».
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 test.beforeEach(async ({ page }) => {
     const erreurs = [];
@@ -35,5 +35,5 @@ test('capture d’écran pour le portfolio', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/produit/1');
     await page.getByRole('region', { name: 'Souvent achetés ensemble' }).scrollIntoViewIfNeeded();
-    await page.screenshot({ path: `${CAPTURES}/etape8-recommandations.png` });
+    await capturer(page, 'etape8-recommandations.png');
 });

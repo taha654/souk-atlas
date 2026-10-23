@@ -2,8 +2,8 @@
 // Page d'accueil (étape 11) : vitrine des produits et des annonces.
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 test.beforeEach(async ({ page }) => {
     const erreurs = [];
@@ -30,8 +30,8 @@ test('vitrine : 4 produits bien notés et 4 annonces récentes, liens vers les l
 test('captures d’écran de l’accueil pour le README', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/');
-    await page.screenshot({ path: `${CAPTURES}/accueil.png` });
+    await capturer(page, 'accueil.png');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    await page.screenshot({ path: `${CAPTURES}/accueil-mobile.png` });
+    await capturer(page, 'accueil-mobile.png');
 });

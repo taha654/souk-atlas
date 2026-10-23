@@ -3,8 +3,8 @@
 // Les comptes créés (test-pw-…@exemple.ma) sont supprimés par lancer.sh.
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 test.beforeEach(async ({ page }) => {
     const erreurs = [];
@@ -58,7 +58,7 @@ test('page panier : quantité et retrait mis à jour sans rechargement', async (
     expect(await page.evaluate(() => window.__marqueur)).toBe(true);
 
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.screenshot({ path: `${CAPTURES}/etape4-panier.png`, fullPage: true });
+    await capturer(page, 'etape4-panier.png', { fullPage: true });
 });
 
 test('parcours complet : panier, inscription, paiement, confirmation, facture, suivi', async ({ page }) => {
@@ -110,7 +110,7 @@ test('parcours complet : panier, inscription, paiement, confirmation, facture, s
     await page.getByLabel('Année').selectOption(String(new Date().getFullYear() + 2));
     await page.getByLabel('Cryptogramme').fill('123');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.screenshot({ path: `${CAPTURES}/etape4-commande.png`, fullPage: true });
+    await capturer(page, 'etape4-commande.png', { fullPage: true });
     const bouton = page.getByRole('button', { name: /Confirmer et payer/ });
     await bouton.click();
 
@@ -123,7 +123,7 @@ test('parcours complet : panier, inscription, paiement, confirmation, facture, s
     await page.getByRole('link', { name: 'Voir la facture' }).click();
     await expect(page.getByRole('heading', { name: 'Facture' })).toBeVisible();
     await expect(page.locator('.entete')).toHaveCount(0); // layout d'impression : pas de menu
-    await page.screenshot({ path: `${CAPTURES}/etape4-facture.png`, fullPage: true });
+    await capturer(page, 'etape4-facture.png', { fullPage: true });
     await page.emulateMedia({ media: 'print' });
     await expect(page.locator('.ecran-seulement')).toBeHidden();
     await page.emulateMedia({ media: 'screen' });
@@ -132,7 +132,7 @@ test('parcours complet : panier, inscription, paiement, confirmation, facture, s
     await page.goto('/mes-commandes');
     await page.locator('.liste-achats a[href^="/commande/"]').first().click();
     await expect(page.locator('[aria-current="step"]')).toContainText('Payée');
-    await page.screenshot({ path: `${CAPTURES}/etape4-suivi.png`, fullPage: true });
+    await capturer(page, 'etape4-suivi.png', { fullPage: true });
 
     // 8. Annulation (confirmation demandée)
     page.once('dialog', (dialogue) => dialogue.accept());

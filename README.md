@@ -132,6 +132,13 @@ Plus de 1 000 vérifications automatiques, toutes vertes (site démarré) :
 | Navigateur (34) | Playwright : JavaScript, accessibilité clavier, WebAssembly et son repli |
 | Compatibilité Oracle 21c | `./database/verifier_21c.sh` installe tout sur un Oracle XE 21c temporaire et relance les tests |
 
+Les tests navigateur ne touchent pas aux captures d'écran de `docs/captures/` :
+pour les refaire (après un changement visuel), ajoutez `CAPTURES=1` :
+
+```bash
+CAPTURES=1 ./tests/navigateur/lancer.sh     # ou : CAPTURES=1 ./tests/tout_lancer.sh
+```
+
 Le SQL est écrit en syntaxe **Oracle 19c / 21c** (version utilisée en cours), même si le
 conteneur fait tourner Oracle 23ai Free.
 

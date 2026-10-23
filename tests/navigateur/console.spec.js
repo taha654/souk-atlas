@@ -2,8 +2,8 @@
 // Tests navigateur de l'étape 9 : page « Jetons d'accès » (outil console C++).
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 test.beforeEach(async ({ page }) => {
     const erreurs = [];
@@ -33,7 +33,7 @@ test('un vendeur crée un jeton, le voit une fois, puis le révoque', async ({ p
     const ligne = page.getByRole('row', { name: /test-capture/ });
     await expect(ligne).toContainText('Valide');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.screenshot({ path: `${CAPTURES}/etape9-jetons.png`, fullPage: true });
+    await capturer(page, 'etape9-jetons.png', { fullPage: true });
 
     // Rechargement : le jeton n'est plus jamais affiché
     await page.goto('/compte/jetons');

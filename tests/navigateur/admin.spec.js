@@ -4,8 +4,8 @@
 // Comptes test-pw-… et leurs annonces supprimés par lancer.sh.
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 async function inscrire(page, email) {
     await page.goto('/inscription');
@@ -54,7 +54,7 @@ test('signalement traité de bout en bout par l’interface', async ({ browser }
     await admin.getByRole('link', { name: titre }).click();
     await expect(admin.getByText('Demande de virement avant envoi.')).toBeVisible();
     await admin.setViewportSize({ width: 1280, height: 900 });
-    await admin.screenshot({ path: `${CAPTURES}/etape7-signalement.png`, fullPage: true });
+    await capturer(admin, 'etape7-signalement.png', { fullPage: true });
     admin.once('dialog', (dialogue) => dialogue.accept());   // « Approuver : l'annonce sera retirée… »
     await admin.getByRole('button', { name: 'Approuver : retirer le contenu' }).click();
     await expect(admin.getByText('Signalement approuvé : le contenu a été retiré.')).toBeVisible();
@@ -78,5 +78,5 @@ test('tableau de bord administrateur : graphiques', async ({ page }) => {
     await page.getByLabel('Période').selectOption('365');
     await expect(page.locator('#graphique-jours path.graphique__ligne')).toHaveCount(1);
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.screenshot({ path: `${CAPTURES}/etape7-admin.png`, fullPage: true });
+    await capturer(page, 'etape7-admin.png', { fullPage: true });
 });

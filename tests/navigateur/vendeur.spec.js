@@ -3,8 +3,8 @@
 // gestion d'un produit avec photo. Comptes test-pw-… supprimés par lancer.sh.
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 // PNG valide de 1 x 1 pixel
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
@@ -48,7 +48,7 @@ test('tableau de bord : 3 graphiques SVG, période changée sans rechargement', 
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.getByLabel('Période').selectOption('365');
     await expect(page.locator('#libelle-periode')).toHaveText('365 derniers jours');
-    await page.screenshot({ path: `${CAPTURES}/etape5-tableau-de-bord.png`, fullPage: true });
+    await capturer(page, 'etape5-tableau-de-bord.png', { fullPage: true });
 });
 
 test('nouveau vendeur : boutique, produit, photo, stock', async ({ page }) => {
@@ -87,5 +87,5 @@ test('nouveau vendeur : boutique, produit, photo, stock', async ({ page }) => {
     await page.getByRole('button', { name: 'Appliquer' }).click();
     await expect(page.getByRole('heading', { name: 'Stock : 5' })).toBeVisible();
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.screenshot({ path: `${CAPTURES}/etape5-produit.png`, fullPage: true });
+    await capturer(page, 'etape5-produit.png', { fullPage: true });
 });

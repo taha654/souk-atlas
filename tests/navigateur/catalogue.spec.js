@@ -3,8 +3,8 @@
 // Critère de l'étape : « Recherche et filtres fonctionnent sans rechargement ».
 // =============================================================================
 import { test, expect } from '@playwright/test';
+import { capturer } from './captures.js';
 
-const CAPTURES = '../../docs/captures';
 
 /**
  * Un rechargement de page efface tout ce qui est stocké dans `window`.
@@ -216,13 +216,13 @@ test('sans JavaScript, les filtres fonctionnent quand même (rechargement classi
 test('captures d’écran pour le portfolio', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto('/catalogue?categorie=1');
-    await page.screenshot({ path: `${CAPTURES}/etape3-catalogue.png`, fullPage: true });
+    await capturer(page, 'etape3-catalogue.png', { fullPage: true });
     await page.goto('/produit/1');
-    await page.screenshot({ path: `${CAPTURES}/etape3-fiche-produit.png`, fullPage: true });
+    await capturer(page, 'etape3-fiche-produit.png', { fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });   // téléphone
     await page.goto('/catalogue?q=samsung');
     // Sur petit écran, les filtres sont repliés : les produits apparaissent tout de suite
     await expect(page.locator('.filtres__bascule')).not.toHaveAttribute('open', '');
     await expect(page.locator('#liste-produits .carte-produit').first()).toBeInViewport();
-    await page.screenshot({ path: `${CAPTURES}/etape3-catalogue-mobile.png`, fullPage: true });
+    await capturer(page, 'etape3-catalogue-mobile.png', { fullPage: true });
 });

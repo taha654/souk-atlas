@@ -7,7 +7,10 @@
 #   ./tests/navigateur/lancer.sh catalogue       (un seul fichier)
 #
 # Premier lancement : téléchargement de l'image (environ 3,5 Go) et de
-# @playwright/test (npm). Les captures d'écran vont dans docs/captures/.
+# @playwright/test (npm).
+#
+#   CAPTURES=1 ./tests/navigateur/lancer.sh      (refait aussi les captures de docs/captures/)
+# Sans CAPTURES=1, aucune image versionnée n'est modifiée.
 # =============================================================================
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -35,7 +38,7 @@ RESEAU=$(docker inspect -f '{{range $nom, $r := .NetworkSettings.Networks}}{{$no
 # --user : fichiers créés (node_modules, captures) à votre nom, pas à root
 docker run --rm --init \
     --network "$RESEAU" \
-    --user "$(id -u):$(id -g)" -e HOME=/tmp \
+    --user "$(id -u):$(id -g)" -e HOME=/tmp -e CAPTURES="${CAPTURES:-0}" \
     -v "$PWD:/projet" -w /projet/tests/navigateur \
     mcr.microsoft.com/playwright:v1.49.1-noble \
     sh -c "npm install --no-audit --no-fund --silent && npx playwright test $*"
