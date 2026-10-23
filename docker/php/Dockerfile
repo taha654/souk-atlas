@@ -1,5 +1,5 @@
-# PHP 8.3 + Apache, avec l'extension OCI8 pour parler à Oracle,
-# et le moteur C++ (souk-moteur) appelé par app/Services/CppEngine.php.
+# PHP 8.3 + Apache, avec l'extension OCI8 pour parler à Oracle, le moteur C++
+# (souk-moteur) appelé par app/Services/CppEngine.php et l'outil souk-console.
 
 # --- Étape 1 : compilation du moteur C++ (construction "multi-étapes").
 # Le compilateur reste dans cette image intermédiaire : l'image finale ne
@@ -65,5 +65,6 @@ ARG HOST_UID=1000
 ARG HOST_GID=1000
 RUN groupmod -o -g "$HOST_GID" www-data && usermod -o -u "$HOST_UID" -g "$HOST_GID" www-data
 
-# Moteur C++ compilé à l'étape 1 (même Debian bookworm : même libstdc++)
-COPY --from=moteur /opt/souk/bin/souk-moteur /usr/local/bin/souk-moteur
+# Programmes C++ compilés à l'étape 1 (même Debian bookworm : même libstdc++) :
+# le moteur appelé par PHP, et l'outil console d'administration
+COPY --from=moteur /opt/souk/bin/souk-moteur /opt/souk/bin/souk-console /usr/local/bin/

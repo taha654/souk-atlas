@@ -2,6 +2,7 @@
 # Souk Atlas — composants C++ (C++17, CMake)
 #   common/  : bibliothèque partagée (JSON, texte, graphe)
 #   engine/  : moteur appelé par PHP (JSON sur stdin → JSON sur stdout)
+#   console/ : outil d'administration en ligne de commande (API JSON du site)
 #   tests/   : tests unitaires et d'intégration (CTest)
 # Construction (dans Docker) : ./cpp/construire.sh
 # =============================================================================
@@ -26,4 +27,5 @@ endif()
 enable_testing()
 add_subdirectory(common)
 add_subdirectory(engine)
+add_subdirectory(console)
 add_subdirectory(tests)
