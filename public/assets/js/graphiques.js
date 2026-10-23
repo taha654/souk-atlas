@@ -86,8 +86,8 @@ export function barres(conteneur, donnees, { titre, format = String, etiquetteCh
 }
 
 /** Barres horizontales (classements : le libellé long tient à gauche) */
-export function barresHorizontales(conteneur, donnees, { titre, format = String } = {}) {
-    const LARGEUR = LARGEUR_DEFAUT;
+export function barresHorizontales(conteneur, donnees, { titre, format = String, largeur = LARGEUR_DEFAUT } = {}) {
+    const LARGEUR = largeur;
     const hauteurLigne = 34;
     const hauteur = Math.max(1, donnees.length) * hauteurLigne + 8;
     const maximum = Math.max(...donnees.map((d) => d.valeur), 1);
