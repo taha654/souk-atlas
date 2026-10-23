@@ -236,6 +236,26 @@ CREATE OR REPLACE PACKAGE BODY pkg_commande AS
     END changer_statut;
 
     -- -------------------------------------------------------------------------
+    PROCEDURE changer_statut_par_vendeur(p_id_commande IN NUMBER, p_id_boutique IN NUMBER, p_nouveau_statut IN VARCHAR2) IS
+        v_id_boutique commande.id_boutique%TYPE;
+    BEGIN
+        BEGIN
+            SELECT id_boutique INTO v_id_boutique FROM commande WHERE id = p_id_commande;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Commande introuvable : ' || p_id_commande);
+        END;
+        IF v_id_boutique <> p_id_boutique THEN
+            pkg_erreurs.lever(pkg_erreurs.c_non_proprietaire, 'Cette commande n''est pas adressée à votre boutique.');
+        END IF;
+        IF p_nouveau_statut NOT IN ('EXPEDIEE', 'LIVREE', 'ANNULEE') THEN
+            pkg_erreurs.lever(pkg_erreurs.c_transition_interdite,
+                'Un vendeur ne peut que passer une commande à EXPEDIEE, LIVREE ou ANNULEE.');
+        END IF;
+        changer_statut(p_id_commande, p_nouveau_statut);
+    END changer_statut_par_vendeur;
+
+    -- -------------------------------------------------------------------------
     PROCEDURE annuler(p_id_commande IN NUMBER) IS
         v_statut commande.statut%TYPE;
         v_mode   commande.mode_paiement%TYPE;

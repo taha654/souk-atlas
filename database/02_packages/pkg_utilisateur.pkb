@@ -135,6 +135,34 @@ CREATE OR REPLACE PACKAGE BODY pkg_utilisateur AS
                 'Ce vendeur a déjà une boutique, ou ce nom de boutique est pris.');
     END creer_boutique;
 
+    PROCEDURE modifier_boutique(
+        p_id_vendeur   IN boutique.id_vendeur%TYPE,
+        p_nom          IN boutique.nom%TYPE,
+        p_description  IN boutique.description%TYPE,
+        p_ville        IN boutique.ville%TYPE)
+    IS
+        v_boutique boutique%ROWTYPE;
+    BEGIN
+        IF TRIM(p_nom) IS NULL OR LENGTH(TRIM(p_nom)) < 3 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Le nom de la boutique doit faire au moins 3 caractères.');
+        END IF;
+        BEGIN
+            SELECT * INTO v_boutique FROM boutique WHERE id_vendeur = p_id_vendeur FOR UPDATE;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Vous n''avez pas encore de boutique.');
+        END;
+        -- Un nouveau nom doit être revu par l'admin : sinon une boutique validée
+        -- pourrait se renommer en n'importe quoi sans contrôle
+        UPDATE boutique
+           SET nom = TRIM(p_nom), description = p_description, ville = p_ville,
+               statut = CASE WHEN statut = 'VALIDEE' AND nom <> TRIM(p_nom) THEN 'EN_ATTENTE' ELSE statut END
+         WHERE id = v_boutique.id;
+    EXCEPTION
+        WHEN DUP_VAL_ON_INDEX THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Ce nom de boutique est déjà pris.');
+    END modifier_boutique;
+
     PROCEDURE changer_statut_boutique(p_id IN boutique.id%TYPE, p_statut IN boutique.statut%TYPE) IS
     BEGIN
         IF p_statut NOT IN ('VALIDEE', 'REFUSEE', 'SUSPENDUE') THEN

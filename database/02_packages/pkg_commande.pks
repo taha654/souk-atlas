@@ -36,6 +36,11 @@ CREATE OR REPLACE PACKAGE pkg_commande AS
     -- -20002 si la transition est interdite ; ANNULEE délègue à annuler
     PROCEDURE changer_statut(p_id_commande IN NUMBER, p_nouveau_statut IN VARCHAR2);
 
+    -- Le vendeur fait avancer SES commandes : EXPEDIEE, LIVREE ou ANNULEE.
+    -- -20012 si la commande n'est pas de sa boutique, -20002 pour un autre statut
+    -- (PAYEE ne dépend que du paiement, jamais du vendeur)
+    PROCEDURE changer_statut_par_vendeur(p_id_commande IN NUMBER, p_id_boutique IN NUMBER, p_nouveau_statut IN VARCHAR2);
+
     -- Remet le stock et rembourse ; -20016 si la commande est déjà expédiée
     PROCEDURE annuler(p_id_commande IN NUMBER);
 

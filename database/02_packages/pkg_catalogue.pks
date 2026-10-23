@@ -76,6 +76,14 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
     PROCEDURE ajuster_stock(
         p_id IN produit.id%TYPE, p_id_boutique IN produit.id_boutique%TYPE, p_delta IN NUMBER);
 
+    -- ----- Photos (espace vendeur) -----
+    c_photos_max CONSTANT PLS_INTEGER := 6;
+    -- Ajoute une photo en dernière position ; -20012 si le produit n'est pas à la
+    -- boutique, -20017 au-delà de c_photos_max photos
+    PROCEDURE ajouter_photo(p_id_produit IN NUMBER, p_id_boutique IN NUMBER, p_chemin IN VARCHAR2, p_id OUT NUMBER);
+    -- Supprime la photo et renvoie son chemin (PHP efface ensuite le fichier)
+    PROCEDURE retirer_photo(p_id_photo IN NUMBER, p_id_boutique IN NUMBER, p_chemin OUT VARCHAR2);
+
     -- ----- Promotions (admin) -----
     -- Exactement une cible : p_id_produit OU p_id_categorie (-20015 sinon)
     PROCEDURE creer_promotion(

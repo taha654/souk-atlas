@@ -42,6 +42,14 @@ CREATE OR REPLACE PACKAGE pkg_utilisateur AS
         p_ville        IN  boutique.ville%TYPE,
         p_id           OUT boutique.id%TYPE);
 
+    -- Le vendeur modifie SA boutique (identifiée par son id de vendeur) ; un
+    -- changement de nom d'une boutique validée la renvoie EN_ATTENTE de validation
+    PROCEDURE modifier_boutique(
+        p_id_vendeur   IN boutique.id_vendeur%TYPE,
+        p_nom          IN boutique.nom%TYPE,
+        p_description  IN boutique.description%TYPE,
+        p_ville        IN boutique.ville%TYPE);
+
     -- p_statut : VALIDEE, REFUSEE ou SUSPENDUE
     PROCEDURE changer_statut_boutique(p_id IN boutique.id%TYPE, p_statut IN boutique.statut%TYPE);
 

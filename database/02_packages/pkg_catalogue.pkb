@@ -254,6 +254,41 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
     END ajuster_stock;
 
     -- =========================================================================
+    -- Photos
+    -- =========================================================================
+    PROCEDURE ajouter_photo(p_id_produit IN NUMBER, p_id_boutique IN NUMBER, p_chemin IN VARCHAR2, p_id OUT NUMBER) IS
+        v_nb PLS_INTEGER;
+    BEGIN
+        verifier_proprietaire(p_id_produit, p_id_boutique);
+        SELECT COUNT(*) INTO v_nb FROM produit_photo WHERE id_produit = p_id_produit;
+        IF v_nb >= c_photos_max THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Un produit a au plus ' || c_photos_max || ' photos.');
+        END IF;
+        INSERT INTO produit_photo (id_produit, chemin, ordre)
+        VALUES (p_id_produit, p_chemin, v_nb + 1)
+        RETURNING id INTO p_id;
+    END ajouter_photo;
+
+    PROCEDURE retirer_photo(p_id_photo IN NUMBER, p_id_boutique IN NUMBER, p_chemin OUT VARCHAR2) IS
+        v_id_produit produit_photo.id_produit%TYPE;
+    BEGIN
+        BEGIN
+            SELECT id_produit, chemin INTO v_id_produit, p_chemin FROM produit_photo WHERE id = p_id_photo;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                pkg_erreurs.lever(pkg_erreurs.c_introuvable, 'Photo introuvable : ' || p_id_photo);
+        END;
+        verifier_proprietaire(v_id_produit, p_id_boutique);
+        DELETE FROM produit_photo WHERE id = p_id_photo;
+        -- Renumérote les photos restantes (1, 2, 3…) : ROW_NUMBER dans un MERGE
+        MERGE INTO produit_photo ph
+        USING (SELECT id, ROW_NUMBER() OVER (ORDER BY ordre, id) AS nouvel_ordre
+                 FROM produit_photo WHERE id_produit = v_id_produit) n
+           ON (ph.id = n.id)
+         WHEN MATCHED THEN UPDATE SET ph.ordre = n.nouvel_ordre;
+    END retirer_photo;
+
+    -- =========================================================================
     -- Promotions
     -- =========================================================================
     PROCEDURE creer_promotion(
