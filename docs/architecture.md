@@ -363,11 +363,11 @@ flowchart LR
 | Suite | Outil | Commande |
 |---|---|---|
 | C++ (9 suites, 247 vérifications) | CTest + mini-cadre `Verif.hpp` | `./cpp/construire.sh` |
-| PL/SQL (296) | `PKG_TEST` maison | `docker compose exec oracle /opt/souk/database/tests/lancer_tests.sh` |
+| PL/SQL (300) | `PKG_TEST` maison | `docker compose exec oracle /opt/souk/database/tests/lancer_tests.sh` |
 | Compatibilité Oracle 21c | Oracle XE 21c temporaire | `./database/verifier_21c.sh` |
 | PHP unitaires (96) | script maison | `docker compose exec php php tests/php/test_unitaires.php` |
 | HTTP de bout en bout (397) | bash + curl | `./tests/http/test_*.sh` |
-| Navigateur (32) | Playwright (Docker) | `./tests/navigateur/lancer.sh` |
+| Navigateur (34) | Playwright (Docker) | `./tests/navigateur/lancer.sh` |
 | **Tout** | | `./tests/tout_lancer.sh` |
 
 Les tests créent des comptes `test-…@exemple.ma` et les suppriment à la fin
