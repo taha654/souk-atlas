@@ -1,0 +1,23 @@
+/* Facture : lisible à l'écran, propre à l'impression (A4, sans couleurs de fond) */
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1d1d1f; background: #faf6ef; }
+.facture { max-width: 800px; margin: 1.5rem auto; padding: 2rem; background: #fff; border: 1px solid #d9d3c7; }
+.facture__entete { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-bottom: 3px solid #1f3a93; padding-bottom: 1rem; }
+.facture__logo { font-size: 1.6rem; font-weight: 700; color: #1f3a93; margin: 0; }
+.facture__references { text-align: right; }
+.facture__references h1 { margin: 0; font-size: 1.8rem; }
+.facture h2 { font-size: 1.05rem; margin: 1.5rem 0 0.5rem; }
+.facture table { width: 100%; border-collapse: collapse; }
+.facture th, .facture td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #d9d3c7; text-align: left; }
+.facture tfoot th { text-align: right; font-weight: 400; }
+.nombre { text-align: right !important; white-space: nowrap; }
+.facture__total { margin-top: 1.5rem; text-align: right; }
+.facture__ttc { font-size: 1.3rem; font-weight: 700; }
+.ecran-seulement { font-size: 0.9rem; }
+
+@media print {
+    @page { size: A4; margin: 15mm; }
+    body { background: #fff; }
+    .facture { border: 0; margin: 0; padding: 0; max-width: none; }
+    .ecran-seulement { display: none; }      /* le lien de retour n'a rien à faire sur papier */
+    .facture__commande { break-inside: avoid; } /* une commande n'est pas coupée entre deux pages */
+}

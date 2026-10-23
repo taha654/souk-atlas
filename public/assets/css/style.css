@@ -220,3 +220,77 @@ h2 { font-size: 1.35rem; }
 .bouton:disabled, .bouton:disabled:hover {
     background: #d9d3c7; border-color: #d9d3c7; color: #55565b; cursor: not-allowed;
 }
+
+/* =============================================================================
+   Étape 4 : panier, commande, suivi
+   ============================================================================= */
+.lien-panier { position: relative; }
+.badge-panier {
+    display: inline-block; min-width: 1.4rem; padding: 0 0.35rem; margin-left: 0.2rem;
+    background: var(--terre); color: #fff; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-align: center;
+}
+.ajout-panier { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0 0.25rem; }
+.ajout-panier input { width: 5rem; padding: 0.5rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; }
+.message-panier { color: var(--succes); min-height: 1.5em; margin: 0; }
+.message-panier--erreur { color: var(--erreur); }
+
+.panier { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1.5rem; align-items: start; }
+.commande { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.5rem; align-items: start; }
+@media (max-width: 860px) { .panier, .commande { grid-template-columns: 1fr; } }
+
+.tableau-panier { width: 100%; border-collapse: collapse; background: #fff; border-radius: var(--rayon); overflow: hidden; }
+.tableau-panier th, .tableau-panier td { padding: 0.75rem; border-bottom: 1px solid var(--bordure); text-align: left; vertical-align: top; }
+.tableau-panier small { display: block; }
+.form-quantite { display: flex; gap: 0.4rem; align-items: center; }
+.form-quantite input { width: 4.5rem; padding: 0.4rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; }
+@media (max-width: 600px) {
+    /* Sur téléphone, chaque ligne du tableau devient un bloc */
+    .tableau-panier thead { display: none; }
+    .tableau-panier tr, .tableau-panier td { display: block; }
+    .tableau-panier tr { border-bottom: 2px solid var(--bordure); }
+    .tableau-panier td { border: 0; padding: 0.3rem 0.75rem; }
+}
+.bouton-lien { background: none; border: 0; padding: 0; font: inherit; color: var(--bleu); text-decoration: underline; cursor: pointer; }
+.recapitulatif .bouton { width: 100%; text-align: center; }
+.prix-total { font-size: 1.2rem; font-weight: 700; color: var(--terre); }
+.liste-simple { padding-left: 1.2rem; }
+.ligne-champs { display: flex; gap: 1rem; flex-wrap: wrap; }
+.ligne-champs select, .commande select, .commande textarea, .formulaire-avis textarea {
+    padding: 0.5rem; font: inherit; border: 1px solid var(--bordure); border-radius: 6px; background: #fff;
+}
+.formulaire-avis textarea { width: 100%; }
+.commande input[type="text"], .commande input[type="tel"] { width: 100%; }
+.actions { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.bouton--secondaire { background: #fff; color: var(--erreur); border-color: var(--erreur); }
+.bouton--secondaire:hover { background: #fbe9e7; border-color: var(--erreur); }
+
+/* Statut d'une commande */
+.statut { display: inline-block; font-size: 0.85rem; font-weight: 600; padding: 0.1rem 0.6rem; border-radius: 999px; margin-left: 0.4rem; vertical-align: middle; }
+.statut--en_attente { background: #fff4d6; color: #7a5300; }
+.statut--payee { background: var(--bleu-clair); color: var(--bleu); }
+.statut--expediee { background: #e3f0fb; color: #164f86; }
+.statut--livree { background: #e6f4ea; color: var(--succes); }
+.statut--annulee { background: #fbe9e7; color: var(--erreur); }
+.liste-achats { list-style: none; padding: 0; }
+
+/* Frise de suivi */
+/* isolation : contexte d'empilement propre ; le trait (z-index -1) reste devant le fond de la carte */
+.suivi { list-style: none; display: flex; padding: 0; margin: 1.5rem 0; counter-reset: etape; isolation: isolate; }
+.suivi__etape { flex: 1; position: relative; text-align: center; padding-top: 2.2rem; color: var(--texte-doux); }
+.suivi__etape::before {
+    counter-increment: etape; content: counter(etape);
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 1.8rem; height: 1.8rem; line-height: 1.8rem; border-radius: 50%;
+    background: var(--bordure); color: #fff; font-weight: 700;
+}
+.suivi__etape + .suivi__etape::after {
+    content: ""; position: absolute; top: 0.85rem; right: 50%; width: 100%; height: 3px;
+    background: var(--bordure); z-index: -1;
+}
+.suivi__etape--faite { color: var(--texte); }
+.suivi__etape--faite::before { background: var(--succes); }
+/* Même spécificité (2 classes) que la règle du trait gris, et placée APRÈS : elle l'emporte */
+.suivi__etape + .suivi__etape--faite::after { background: var(--succes); }
+.suivi__etape[aria-current="step"] .suivi__libelle { font-weight: 700; }
+.suivi__libelle, .suivi__date { display: block; }
+.suivi__date { font-size: 0.85rem; }
