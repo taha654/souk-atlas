@@ -383,6 +383,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_catalogue AS
         p_nb := SQL%ROWCOUNT;
     END desactiver_promotions_terminees;
 
+    FUNCTION categorie_par_nom(p_nom IN VARCHAR2) RETURN NUMBER IS
+        v_id categorie.id%TYPE;
+    BEGIN
+        -- MIN : si deux catégories portaient le même nom, on prend la plus ancienne
+        SELECT MIN(id) INTO v_id FROM categorie WHERE normaliser(TRIM(nom)) = normaliser(TRIM(p_nom));
+        RETURN v_id;
+    END categorie_par_nom;
+
     -- ----- Recommandations -----
 
     FUNCTION paniers_achetes RETURN SYS_REFCURSOR IS

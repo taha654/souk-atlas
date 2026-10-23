@@ -53,5 +53,28 @@ CREATE OR REPLACE PACKAGE pkg_utilisateur AS
     -- p_statut : VALIDEE, REFUSEE ou SUSPENDUE
     PROCEDURE changer_statut_boutique(p_id IN boutique.id%TYPE, p_statut IN boutique.statut%TYPE);
 
+    -- ----- Jetons d'accès à l'API (outil console C++) -----
+    c_jetons_max CONSTANT PLS_INTEGER := 5;   -- jetons valides par compte
+
+    -- Réservé aux rôles VENDEUR et ADMIN (-20014). p_empreinte : SHA-256 du jeton,
+    -- calculée par PHP. -20017 si p_jours hors de 1..365 ou trop de jetons actifs.
+    PROCEDURE creer_jeton(
+        p_id_utilisateur IN  NUMBER,
+        p_empreinte      IN  VARCHAR2,
+        p_libelle        IN  VARCHAR2,
+        p_jours          IN  NUMBER,
+        p_id             OUT NUMBER);
+
+    -- Seul le propriétaire révoque son jeton (-20012)
+    PROCEDURE revoquer_jeton(p_id_jeton IN NUMBER, p_id_utilisateur IN NUMBER);
+
+    -- Authentification d'une requête de la console. Jeton inconnu, révoqué,
+    -- expiré, ou compte désactivé : -20009 (même message dans tous les cas, pour
+    -- ne rien apprendre à un attaquant). Note la date de dernière utilisation.
+    PROCEDURE utilisateur_du_jeton(
+        p_empreinte      IN  VARCHAR2,
+        p_id_utilisateur OUT NUMBER,
+        p_role           OUT VARCHAR2);
+
 END pkg_utilisateur;
 /

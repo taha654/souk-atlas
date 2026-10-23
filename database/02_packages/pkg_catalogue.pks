@@ -108,6 +108,11 @@ CREATE OR REPLACE PACKAGE pkg_catalogue AS
     -- Appelée par le job JOB_FIN_PROMOTIONS ; p_nb = nombre de promotions désactivées
     PROCEDURE desactiver_promotions_terminees(p_nb OUT NUMBER);
 
+    -- Catégorie désignée par son nom, sans tenir compte des majuscules ni des
+    -- accents ("electromenager" trouve "Électroménager"). NULL si aucune.
+    -- Utilisée par l'import CSV de l'outil console (étape 9).
+    FUNCTION categorie_par_nom(p_nom IN VARCHAR2) RETURN NUMBER;
+
     -- ----- Recommandations « souvent achetés ensemble » (étape 8) -----
     -- Tableau associatif : c'est le type de collection qu'OCI8 sait lier depuis
     -- PHP (oci_bind_array_by_name) pour envoyer plusieurs valeurs en un appel

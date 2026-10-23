@@ -175,5 +175,75 @@ CREATE OR REPLACE PACKAGE BODY pkg_utilisateur AS
         END IF;
     END changer_statut_boutique;
 
+    -- ----- Jetons d'accès à l'API -----
+
+    PROCEDURE creer_jeton(
+        p_id_utilisateur IN  NUMBER,
+        p_empreinte      IN  VARCHAR2,
+        p_libelle        IN  VARCHAR2,
+        p_jours          IN  NUMBER,
+        p_id             OUT NUMBER)
+    IS
+        v_role   utilisateur.role%TYPE;
+        v_actifs PLS_INTEGER;
+    BEGIN
+        BEGIN
+            SELECT role INTO v_role FROM utilisateur WHERE id = p_id_utilisateur AND statut = 'ACTIF';
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                pkg_erreurs.lever(pkg_erreurs.c_compte_introuvable, 'Compte introuvable ou désactivé.');
+        END;
+        IF v_role NOT IN ('VENDEUR', 'ADMIN') THEN
+            pkg_erreurs.lever(pkg_erreurs.c_role_invalide, 'Les jetons d''API sont réservés aux vendeurs et aux administrateurs.');
+        END IF;
+        IF p_jours IS NULL OR p_jours NOT BETWEEN 1 AND 365 OR p_jours <> TRUNC(p_jours) THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Durée de validité invalide (1 à 365 jours).');
+        END IF;
+        IF TRIM(p_libelle) IS NULL OR LENGTH(TRIM(p_libelle)) > 100 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Donnez un nom au jeton (100 caractères au plus).');
+        END IF;
+        -- Une empreinte SHA-256 en hexadécimal : 64 caractères 0-9 a-f
+        IF p_empreinte IS NULL OR NOT REGEXP_LIKE(p_empreinte, '^[0-9a-f]{64}$') THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide, 'Empreinte de jeton invalide.');
+        END IF;
+
+        SELECT COUNT(*) INTO v_actifs FROM jeton_api
+         WHERE id_utilisateur = p_id_utilisateur AND revoque = 0 AND date_expiration > SYSDATE;
+        IF v_actifs >= c_jetons_max THEN
+            pkg_erreurs.lever(pkg_erreurs.c_donnee_invalide,
+                'Vous avez déjà ' || c_jetons_max || ' jetons valides : révoquez-en un d''abord.');
+        END IF;
+
+        INSERT INTO jeton_api (id_utilisateur, empreinte, libelle, date_expiration)
+        VALUES (p_id_utilisateur, p_empreinte, TRIM(p_libelle), SYSDATE + p_jours)
+        RETURNING id INTO p_id;
+    END creer_jeton;
+
+    PROCEDURE revoquer_jeton(p_id_jeton IN NUMBER, p_id_utilisateur IN NUMBER) IS
+    BEGIN
+        UPDATE jeton_api SET revoque = 1 WHERE id = p_id_jeton AND id_utilisateur = p_id_utilisateur;
+        IF SQL%ROWCOUNT = 0 THEN
+            pkg_erreurs.lever(pkg_erreurs.c_non_proprietaire, 'Ce jeton n''existe pas ou ne vous appartient pas.');
+        END IF;
+    END revoquer_jeton;
+
+    PROCEDURE utilisateur_du_jeton(
+        p_empreinte      IN  VARCHAR2,
+        p_id_utilisateur OUT NUMBER,
+        p_role           OUT VARCHAR2)
+    IS
+        v_id_jeton jeton_api.id%TYPE;
+    BEGIN
+        SELECT j.id, u.id, u.role INTO v_id_jeton, p_id_utilisateur, p_role
+          FROM jeton_api j JOIN utilisateur u ON u.id = j.id_utilisateur
+         WHERE j.empreinte = p_empreinte
+           AND j.revoque = 0 AND j.date_expiration > SYSDATE
+           AND u.statut = 'ACTIF';
+        UPDATE jeton_api SET date_derniere_utilisation = SYSDATE WHERE id = v_id_jeton;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            pkg_erreurs.lever(pkg_erreurs.c_compte_introuvable, 'Jeton d''API invalide, expiré ou révoqué.');
+    END utilisateur_du_jeton;
+
 END pkg_utilisateur;
 /

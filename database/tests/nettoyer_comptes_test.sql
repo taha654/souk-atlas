@@ -13,6 +13,9 @@ DECLARE
     v_boutiques  SYS.ODCINUMBERLIST;   -- boutiques des vendeurs de test
     v_produits   SYS.ODCINUMBERLIST;   -- et leurs produits
 BEGIN
+    -- Jetons d'API créés par les tests sur des comptes de DÉMO (admin) : nommés "test-…"
+    DELETE FROM jeton_api WHERE libelle LIKE 'test-%';
+
     SELECT id BULK COLLECT INTO v_comptes FROM utilisateur WHERE email LIKE 'test-%@exemple.ma';
     IF v_comptes.COUNT = 0 THEN
         RETURN;
