@@ -212,7 +212,7 @@ codes_ip=""
 for i in $(seq 1 20); do
     c=$(connecter "$TMP/x" "test-http-ip-$i@exemple.ma" mauvais)
     codes_ip+="$c "
-    [[ $c == 401 ]] || echo "  (diagnostic) essai $i : $c — $(grep -o '<p>[^<]*</p>' "$TMP/corps" | head -1) — php démarré à $(docker inspect -f '{{.State.StartedAt}}' souk-atlas-php-1 | cut -c12-19), maintenant $(date -u +%T)"
+    [[ $c == 401 ]] || echo "  (diagnostic) essai $i : $c — $(grep -o '<p>[^<]*</p>' "$TMP/corps" | head -1) — php démarré à $(docker inspect -f '{{.State.StartedAt}}' "$(docker compose ps -q php)" | cut -c12-19), maintenant $(date -u +%T)"
 done
 verifier "20 essais sur 20 emails différents : tous 401" "$(printf '401 %.0s' {1..20})" "$codes_ip"
 verifier "21e essai, compte valide et bon mot de passe : 429" 429 "$(connecter "$TMP/x" amine.lahlou@exemple.ma)"

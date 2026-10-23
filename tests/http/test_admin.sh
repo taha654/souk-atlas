@@ -41,14 +41,16 @@ verifier "vendeur : POST traiter un signalement → 403" 403 "$(poster "$Y" /adm
 verifier "admin : tableau de bord" 200 "$(code "$ADM" /admin)"
 
 echo "--- Signalement traité de bout en bout"
-poster "$A" /annonces 'titre=iPhone neuf à 500 DH test' 'description=Paiement par virement uniquement, envoi rapide.' prix=500 ville=Rabat id_categorie=3 > /dev/null
+# Annonce d'apparence normale (le moteur C++ la laisse passer) : ce sont des
+# utilisateurs qui la signalent, et l'admin qui tranche
+poster "$A" /annonces 'titre=iPhone 13 à vendre test' 'description=Bon état, remise en main propre.' prix=1500 ville=Rabat id_categorie=3 > /dev/null
 ANN=$(location | sed 's|.*/mes-annonces/||')
 poster "$B" "/annonce/$ANN/signaler" motif=ARNAQUE 'commentaire=Prix beaucoup trop bas' > /dev/null
 poster "$C" "/annonce/$ANN/signaler" motif=ARNAQUE > /dev/null
 LISTE=$(page "$ADM" /admin/signalements)
-verifier_contient "visible dans la liste des signalements ouverts" "iPhone neuf à 500 DH test" "$LISTE"
-SIG=$(grep -o "href=\"/admin/signalements/[0-9]*\">iPhone neuf à 500 DH test" <<< "$LISTE" | grep -o '[0-9]\+' | head -1)
-verifier "regroupés : 2 signalements sur une ligne" 1 "$(grep -c "iPhone neuf à 500 DH test</a></td>" <<< "$LISTE")"
+verifier_contient "visible dans la liste des signalements ouverts" "iPhone 13 à vendre test" "$LISTE"
+SIG=$(grep -o "href=\"/admin/signalements/[0-9]*\">iPhone 13 à vendre test" <<< "$LISTE" | grep -o '[0-9]\+' | head -1)
+verifier "regroupés : 2 signalements sur une ligne" 1 "$(grep -c "iPhone 13 à vendre test</a></td>" <<< "$LISTE")"
 DETAIL=$(page "$ADM" "/admin/signalements/$SIG")
 verifier_contient "détail : les deux auteurs" "Prix beaucoup trop bas" "$DETAIL"
 verifier "traitement : 303" 303 "$(poster "$ADM" "/admin/signalements/$SIG/traiter" decision=APPROUVER)"

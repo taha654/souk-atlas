@@ -28,9 +28,10 @@ test('signalement traité de bout en bout par l’interface', async ({ browser }
     await auteur.goto('/annonces/nouvelle');
     await auteur.getByLabel('Titre').fill(titre);
     await auteur.getByLabel('Catégorie').selectOption({ label: '— TV, audio & consoles' });
-    await auteur.getByLabel('Prix (MAD)').fill('300');
+    // Annonce d'apparence normale : le moteur C++ la laisse passer, des utilisateurs la signalent
+    await auteur.getByLabel('Prix (MAD)').fill('1500');
     await auteur.getByLabel('Ville').fill('Casablanca');
-    await auteur.getByLabel('Description').fill('Paiement uniquement par virement avant envoi.');
+    await auteur.getByLabel('Description').fill('Bon état, remise en main propre.');
     await auteur.getByRole('button', { name: 'Publier' }).click();
     await expect(auteur.getByText('Annonce publiée.')).toBeVisible();
     const urlAnnonce = '/annonce/' + auteur.url().split('/').pop();

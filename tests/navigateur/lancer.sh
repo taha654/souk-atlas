@@ -28,9 +28,13 @@ COMMIT;" > /dev/null
 DERNIER_MESSAGE=$(BASE=unused bash -c 'source tests/http/outils.sh; sql "SELECT NVL(MAX(id), 0) FROM message;"')
 trap nettoyer EXIT
 
+# Réseau Docker du projet, lu sur le conteneur php : son nom dépend du dossier
+# où le dépôt a été cloné ("souk-atlas_default", "mon-clone_default"…)
+RESEAU=$(docker inspect -f '{{range $nom, $r := .NetworkSettings.Networks}}{{$nom}}{{end}}' "$(docker compose ps -q php)")
+
 # --user : fichiers créés (node_modules, captures) à votre nom, pas à root
 docker run --rm --init \
-    --network souk-atlas_default \
+    --network "$RESEAU" \
     --user "$(id -u):$(id -g)" -e HOME=/tmp \
     -v "$PWD:/projet" -w /projet/tests/navigateur \
     mcr.microsoft.com/playwright:v1.49.1-noble \
