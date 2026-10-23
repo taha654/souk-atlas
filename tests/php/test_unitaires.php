@@ -15,6 +15,8 @@ use App\Core\Erreurs\ErreurMetier;
 use App\Core\Erreurs\MethodeNonAutorisee;
 use App\Core\Erreurs\RouteIntrouvable;
 use App\Core\Router;
+use App\Models\FiltresCatalogue;
+use App\Models\Produit;
 use App\Models\Utilisateur;
 
 $racine = dirname(__DIR__, 2);
@@ -151,6 +153,42 @@ verifier('balise neutralisée', e('<script>alert(1)</script>') === '&lt;script&g
 verifier('guillemets échappés (attributs)', e('" onmouseover="x') === '&quot; onmouseover=&quot;x');
 verifier('apostrophe échappée', e("l'ami") === 'l&#039;ami');
 verifier('date_fr', date_fr('2026-10-23 14:05:00') === '23/10/2026' && date_fr(null) === '—');
+
+// ----------------------------------------------------------------- Filtres du catalogue
+echo "--- Filtres du catalogue\n";
+$f = FiltresCatalogue::depuisRequete(['q' => '  samsung ', 'categorie' => '3', 'prix_min' => '100',
+    'prix_max' => '2000,5', 'tri' => 'prix_asc', 'page' => '2', 'en_stock' => '1']);
+verifier('filtres valides lus et typés', $f->texte === 'samsung' && $f->categorie === 3 && $f->prixMin === 100.0
+    && $f->prixMax === 2000.5 && $f->tri === 'prix_asc' && $f->page === 2 && $f->enStock);
+$f = FiltresCatalogue::depuisRequete(['categorie' => 'abc', 'page' => '-3', 'tri' => 'DROP TABLE', 'prix_min' => '-5']);
+verifier('valeurs invalides → valeurs par défaut', $f->categorie === null && $f->page === 1
+    && $f->tri === 'pertinence' && $f->prixMin === null);
+$f = FiltresCatalogue::depuisRequete(['page' => '1.5', 'categorie' => '12abc']);
+verifier('"1.5" et "12abc" refusés (FILTER_VALIDATE_INT)', $f->page === 1 && $f->categorie === null);
+$f = FiltresCatalogue::depuisRequete(['prix_min' => '500', 'prix_max' => '100']);
+verifier('bornes de prix inversées remises dans l\'ordre', $f->prixMin === 100.0 && $f->prixMax === 500.0);
+$f = FiltresCatalogue::depuisRequete(['page' => '999999']);
+verifier('page plafonnée', $f->page === 1000);
+$f = FiltresCatalogue::depuisRequete(['q' => ['tableau'], 'tri' => ['x']]);
+verifier('un tableau dans ?q[]= ne fait pas planter', $f->texte === '' && $f->tri === 'pertinence');
+$f = FiltresCatalogue::depuisRequete(['q' => str_repeat('é', 300)]);
+verifier('texte tronqué à 100 caractères', mb_strlen($f->texte) === 100);
+$f = FiltresCatalogue::depuisRequete(['q' => 'tapis', 'categorie' => '14', 'page' => '3']);
+verifier('URL sans valeurs par défaut', $f->url() === '/catalogue?q=tapis&categorie=14&page=3', $f->url());
+verifier('URL de la page 1 : sans ?page', $f->url(['page' => 1]) === '/catalogue?q=tapis&categorie=14');
+verifier('URL échappée (http_build_query)', FiltresCatalogue::depuisRequete(['q' => 'a&b=c'])->url() === '/catalogue?q=a%26b%3Dc');
+
+// ----------------------------------------------------------------- Affichage
+echo "--- Affichage\n";
+verifier('format_prix : 3948 → "3 948,00 MAD" (espaces insécables)', format_prix(3948) === "3\u{00A0}948,00\u{00A0}MAD");
+verifier('format_prix : 52.92', format_prix(52.92) === "52,92\u{00A0}MAD");
+verifier('texte_note sans avis', texte_note(null, 0) === "Pas encore d'avis");
+verifier('texte_note : virgule décimale', texte_note(4.25, 8) === '★ 4,3 sur 5 (8 avis)', texte_note(4.25, 8));
+verifier('texte_stock', texte_stock(0) === 'Épuisé' && texte_stock(3) === 'Plus que 3 en stock' && texte_stock(40) === 'En stock');
+verifier('pages_a_afficher : peu de pages', pages_a_afficher(1, 3) === [1, 2, 3]);
+verifier('pages_a_afficher : 1 … 4 5 6 7 8 … 20', pages_a_afficher(6, 20) === [1, null, 4, 5, 6, 7, 8, null, 20]);
+verifier('nomCourt : prénom + initiale', Produit::nomCourt('Fatima Zahra Bennani') === 'Fatima Zahra B.'
+    && Produit::nomCourt('Amine') === 'Amine');
 
 echo "\nBILAN PHP : $ok OK, $echecs ÉCHEC\n";
 exit($echecs === 0 ? 0 : 1);

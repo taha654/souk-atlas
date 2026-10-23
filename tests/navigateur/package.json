@@ -1,0 +1,9 @@
+{
+  "name": "souk-atlas-tests-navigateur",
+  "private": true,
+  "type": "module",
+  "description": "Tests de bout en bout dans un vrai navigateur (Chromium), lancés par lancer.sh",
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}

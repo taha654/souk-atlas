@@ -209,22 +209,29 @@ verifier "un autre compte n'est pas bloqué" 303 "$(connecter "$TMP/autre" amine
 echo "--- Limitation par IP (20 échecs en 15 minutes, emails tous différents)"
 effacer_echecs
 codes_ip=""
-for i in $(seq 1 20); do codes_ip+="$(connecter "$TMP/x" "test-http-ip-$i@exemple.ma" mauvais) "; done
+for i in $(seq 1 20); do
+    c=$(connecter "$TMP/x" "test-http-ip-$i@exemple.ma" mauvais)
+    codes_ip+="$c "
+    [[ $c == 401 ]] || echo "  (diagnostic) essai $i : $c — $(grep -o '<p>[^<]*</p>' "$TMP/corps" | head -1) — php démarré à $(docker inspect -f '{{.State.StartedAt}}' souk-atlas-php-1 | cut -c12-19), maintenant $(date -u +%T)"
+done
 verifier "20 essais sur 20 emails différents : tous 401" "$(printf '401 %.0s' {1..20})" "$codes_ip"
 verifier "21e essai, compte valide et bon mot de passe : 429" 429 "$(connecter "$TMP/x" amine.lahlou@exemple.ma)"
 effacer_echecs
 verifier "après effacement des échecs : connexion possible" 303 "$(connecter "$TMP/x" amine.lahlou@exemple.ma)"
 
-echo "--- Expiration après inactivité (réglée à 3 secondes pour le test)"
-relancer_php SESSION_INACTIVITE_SECONDES=3
+echo "--- Expiration après inactivité (réglée à 4 secondes pour le test)"
+# Marges larges (1 s et 6 s pour un délai de 4 s) : le test ne doit pas dépendre
+# de la vitesse de la machine
+relancer_php SESSION_INACTIVITE_SECONDES=4
 : > "$TMP/exp"
 connecter "$TMP/exp" amine.lahlou@exemple.ma > /dev/null
 verifier "connecté : /compte accessible" 200 "$(code "$TMP/exp" /compte)"
-sleep 2
-verifier "activité à 2 s : toujours connecté (le délai repart)" 200 "$(code "$TMP/exp" /compte)"
-sleep 4
-curl -s -o /dev/null -D "$TMP/entetes" -b "$TMP/exp" -c "$TMP/exp" "$BASE/compte"
-verifier "4 s sans activité : redirigé vers la connexion" "/connexion?retour=%2Fcompte" "$(location)"
+sleep 1
+verifier "activité à 1 s : toujours connecté (le délai repart)" 200 "$(code "$TMP/exp" /compte)"
+sleep 6
+statut=$(curl -s -o /dev/null -w '%{http_code}' -D "$TMP/entetes" -b "$TMP/exp" -c "$TMP/exp" "$BASE/compte")
+verifier "6 s sans activité : redirigé vers la connexion" "303 /connexion?retour=%2Fcompte" "$statut $(location)"
+[[ $statut == 303 ]] || { echo "  (diagnostic) en-têtes reçus :"; sed 's/^/    /' "$TMP/entetes"; }
 verifier_contient "message « session a expiré »" "Votre session a expiré" "$(curl -s -b "$TMP/exp" -c "$TMP/exp" "$BASE/connexion")"
 
 echo "--- Flag Secure forcé (SESSION_COOKIE_SECURE=1, comme en production HTTPS)"

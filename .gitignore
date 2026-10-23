@@ -14,3 +14,7 @@ build/
 .idea/
 *.swp
 .DS_Store
+
+# Tests navigateur
+tests/navigateur/node_modules/
+tests/navigateur/resultats/
