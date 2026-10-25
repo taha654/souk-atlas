@@ -250,6 +250,15 @@ verifierException('plus de 5 Mo refusé', ErreurMetier::class,
 verifierException('limite PHP dépassée (UPLOAD_ERR_INI_SIZE) refusée', ErreurMetier::class,
     fn () => Upload::verifier("$tmp/vraie.png", 0, UPLOAD_ERR_INI_SIZE));
 verifierException('aucun fichier', ErreurMetier::class, fn () => Upload::verifier('', 0, UPLOAD_ERR_NO_FILE));
+// Limite plus basse du site de démonstration (ModeDemo::tailleMaxPhoto)
+try {
+    Upload::verifier("$tmp/vraie.png", 3 * 1024 * 1024, UPLOAD_ERR_OK, 2 * 1024 * 1024);
+    verifier('limite de 2 Mo : 3 Mo refusés', false, 'aucune exception');
+} catch (ErreurMetier $e) {
+    verifier('limite de 2 Mo : 3 Mo refusés, message « 2 Mo »', str_contains($e->getMessage(), '2 Mo'), $e->getMessage());
+}
+verifier('limite de 2 Mo : petite photo acceptée',
+    Upload::verifier("$tmp/vraie.png", strlen($png), UPLOAD_ERR_OK, 2 * 1024 * 1024) === 'png');
 array_map('unlink', ["$tmp/vraie.png", "$tmp/script.png", "$tmp/fausse.jpg"]);
 // supprimer() ignore tout chemin qui ne ressemble pas à un fichier envoyé
 $leurre = "$tmp/souk-leurre-" . bin2hex(random_bytes(3));

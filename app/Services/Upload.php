@@ -29,8 +29,11 @@ final class Upload
         'image/webp' => 'webp',
     ];
 
-    public function __construct(private readonly string $dossierPublic)
-    {
+    /** @param int $tailleMax octets ; plus bas sur le site de démonstration (ModeDemo) */
+    public function __construct(
+        private readonly string $dossierPublic,
+        private readonly int $tailleMax = self::TAILLE_MAX,
+    ) {
     }
 
     /**
@@ -44,7 +47,7 @@ final class Upload
         if ($fichier === null) {
             throw self::refus('Aucune photo reçue.');
         }
-        $extension = self::verifier($fichier['tmp_name'], (int) $fichier['size'], $fichier['error']);
+        $extension = self::verifier($fichier['tmp_name'], (int) $fichier['size'], $fichier['error'], $this->tailleMax);
         // is_uploaded_file : le chemin vient bien d'un envoi HTTP (et pas, par
         // exemple, de /etc/passwd glissé dans la requête)
         if (!is_uploaded_file($fichier['tmp_name'])) {
@@ -66,10 +69,10 @@ final class Upload
      * Contrôles sur le fichier temporaire (fonction pure : testable sans vrai envoi).
      * Renvoie l'extension à utiliser.
      */
-    public static function verifier(string $chemin, int $taille, int $codeErreur): string
+    public static function verifier(string $chemin, int $taille, int $codeErreur, int $tailleMax = self::TAILLE_MAX): string
     {
-        if ($codeErreur === UPLOAD_ERR_INI_SIZE || $codeErreur === UPLOAD_ERR_FORM_SIZE || $taille > self::TAILLE_MAX) {
-            throw self::refus('Photo trop lourde : 5 Mo au maximum.');
+        if ($codeErreur === UPLOAD_ERR_INI_SIZE || $codeErreur === UPLOAD_ERR_FORM_SIZE || $taille > $tailleMax) {
+            throw self::refus(sprintf('Photo trop lourde : %d Mo au maximum.', intdiv($tailleMax, 1024 * 1024)));
         }
         if ($codeErreur === UPLOAD_ERR_NO_FILE) {
             throw self::refus('Aucune photo choisie.');

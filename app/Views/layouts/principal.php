@@ -6,6 +6,7 @@ use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\Session;
 use App\Core\View;
+use App\Services\ModeDemo;
 
 $moi = Auth::utilisateur();
 $flashs = Session::lireFlashs();
@@ -26,6 +27,10 @@ $flashs = Session::lireFlashs();
 </head>
 <body>
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
+
+<?php if (ModeDemo::actif()): ?>
+    <p class="bandeau-demo" role="note">Site de démonstration — données fictives, réinitialisées chaque nuit</p>
+<?php endif; ?>
 
 <header class="entete">
     <div class="entete__interieur">

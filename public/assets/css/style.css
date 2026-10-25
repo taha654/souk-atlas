@@ -102,6 +102,9 @@ a { color: var(--bleu); }
 .champ__erreur { color: var(--erreur); font-size: 0.9rem; margin: 0.25rem 0 0; }
 
 /* ----- Messages ----- */
+/* Site de démonstration (DEMO_MODE=1) : bandeau en haut de chaque page */
+.bandeau-demo { margin: 0; padding: 0.5rem 1rem; background: var(--terre); color: #fff; text-align: center; font-weight: 600; }
+
 .alerte { border-radius: var(--rayon); padding: 0.75rem 1rem; margin: 0 0 1rem; border-left: 4px solid; }
 .alerte--succes { background: #e6f4ea; border-color: var(--succes); }
 .alerte--info { background: var(--bleu-clair); border-color: var(--bleu); }

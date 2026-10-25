@@ -34,6 +34,18 @@ return [
         'cookie_secure_force' => getenv('SESSION_COOKIE_SECURE') === '1',
     ],
 
+    // Site de démonstration public (DEMO_MODE=1, voir docker-compose.prod.yml et
+    // app/Services/ModeDemo.php) : bandeau, admin bridé, envois de photos limités.
+    // Les données sont réinitialisées chaque nuit (deploy/reinitialiser_demo.sh).
+    'demo' => [
+        'actif' => getenv('DEMO_MODE') === '1',
+        'photo_taille_max_mo' => 2,
+        // Photos envoyées par un même compte (les photos de démo ne comptent pas)
+        'photos_par_compte' => 10,
+        // Tous comptes confondus : protège le disque de la VM
+        'photos_au_total' => 300,
+    ],
+
     // Limitation des tentatives de connexion (fenêtre glissante)
     'connexion' => [
         'fenetre_minutes' => 15,

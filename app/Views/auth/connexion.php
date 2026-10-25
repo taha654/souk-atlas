@@ -4,6 +4,7 @@
 /** @var string|null $erreur */
 
 use App\Core\Csrf;
+use App\Services\ModeDemo;
 ?>
 <section class="carte carte--etroite">
     <h1>Connexion</h1>
@@ -32,4 +33,16 @@ use App\Core\Csrf;
     </form>
 
     <p class="sous-texte">Pas encore de compte ? <a href="/inscription">Créer un compte</a></p>
+
+    <?php if (ModeDemo::actif()): ?>
+        <?php /* Comptes partagés de 05_seed.sql : leur mot de passe n'a rien de secret */ ?>
+        <div class="alerte alerte--info">
+            <p><strong>Comptes de démonstration</strong> (mot de passe <code>Demo1234!</code>) :</p>
+            <ul>
+                <li>client : <code>amine.lahlou@exemple.ma</code></li>
+                <li>vendeur : <code>youssef.benali@exemple.ma</code></li>
+                <li>administrateur : <code>admin@exemple.ma</code></li>
+            </ul>
+        </div>
+    <?php endif; ?>
 </section>

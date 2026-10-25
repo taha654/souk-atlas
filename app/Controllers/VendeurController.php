@@ -16,6 +16,7 @@ use App\Models\Commande;
 use App\Models\CommandeVendeur;
 use App\Models\ProduitVendeur;
 use App\Models\Statistiques;
+use App\Services\ModeDemo;
 use App\Services\Upload;
 
 /**
@@ -170,9 +171,10 @@ final class VendeurController extends Controller
     {
         $boutique = $this->boutique();
         $produit = $this->produitDeLaBoutique($id, $boutique['id']);
-        $upload = new Upload(Config::get('dossier_public'));
+        $upload = new Upload(Config::get('dossier_public'), ModeDemo::tailleMaxPhoto());
         $chemin = null;
         try {
+            ModeDemo::verifierQuotaPhotos($this->db, Auth::utilisateur()['id'], Config::get('dossier_public'));
             $chemin = $upload->photo($this->request->fichier('photo'), 'produits');
             (new ProduitVendeur($this->db))->ajouterPhoto($produit['id'], $boutique['id'], $chemin);
             $this->db->valider();

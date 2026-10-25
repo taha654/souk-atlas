@@ -14,6 +14,7 @@ use App\Models\Categorie;
 use App\Models\Moderation;
 use App\Models\Promotion;
 use App\Services\ErreurMoteur;
+use App\Services\ModeDemo;
 use App\Services\Recommandations;
 
 /**
@@ -135,6 +136,11 @@ final class AdminController extends Controller
     public function modifierUtilisateur(string $id): Response
     {
         $moi = $this->admin();
+        if (ModeDemo::actif()) {
+            // Le compte admin de démo est partagé : un visiteur ne doit pas
+            // pouvoir désactiver ou rétrograder les comptes des suivants
+            return $this->refuserEnDemo('/admin/utilisateurs');
+        }
         $idUtilisateur = $this->id($id);
         $action = $this->request->champ('action');
         if ($idUtilisateur === $moi['id']) {
@@ -163,6 +169,9 @@ final class AdminController extends Controller
     public function creerCategorie(): Response
     {
         $this->admin();
+        if (ModeDemo::actif()) {
+            return $this->refuserEnDemo('/admin/categories');
+        }
         $parent = $this->entier('id_parent', 1, PHP_INT_MAX);
         return $this->executer('/admin/categories',
             fn () => (new Categorie($this->db))->creer($this->request->champ('nom'), $parent), 'Catégorie créée.');
@@ -171,6 +180,9 @@ final class AdminController extends Controller
     public function renommerCategorie(string $id): Response
     {
         $this->admin();
+        if (ModeDemo::actif()) {
+            return $this->refuserEnDemo('/admin/categories');
+        }
         return $this->executer('/admin/categories',
             fn () => (new Categorie($this->db))->renommer($this->id($id), $this->request->champ('nom')), 'Catégorie renommée.');
     }
@@ -178,6 +190,9 @@ final class AdminController extends Controller
     public function supprimerCategorie(string $id): Response
     {
         $this->admin();
+        if (ModeDemo::actif()) {
+            return $this->refuserEnDemo('/admin/categories');
+        }
         return $this->executer('/admin/categories',
             fn () => (new Categorie($this->db))->supprimer($this->id($id)), 'Catégorie supprimée.');
     }
@@ -244,6 +259,13 @@ final class AdminController extends Controller
     private function admin(): array
     {
         return Auth::exigerRole('ADMIN');
+    }
+
+    /** Site de démonstration : l'action est refusée, avec un message clair */
+    private function refuserEnDemo(string $retour): Response
+    {
+        Session::flash('erreur', ModeDemo::MESSAGE_REFUS);
+        return $this->rediriger($retour);
     }
 
     private function id(string $id): int

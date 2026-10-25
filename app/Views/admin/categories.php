@@ -4,10 +4,14 @@
 
 use App\Core\Csrf;
 use App\Core\View;
+use App\Services\ModeDemo;
 ?>
 <?= View::fragment('partials/menu_admin', ['actif' => '/admin/categories']) ?>
 <h1>Catégories</h1>
 <p class="sous-texte-gauche">Arbre partagé par la place de marché et les annonces (requête CONNECT BY). Une catégorie ne se supprime que vide.</p>
+<?php if (ModeDemo::actif()): ?>
+    <p class="alerte alerte--info">Site de démonstration : la création, le renommage et la suppression de catégories sont désactivés.</p>
+<?php endif; ?>
 
 <form method="post" action="/admin/categories" class="carte form-quantite"><?= Csrf::champ() ?>
     <label for="nom-nouvelle">Nouvelle catégorie</label>

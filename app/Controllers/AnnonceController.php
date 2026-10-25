@@ -15,6 +15,7 @@ use App\Models\Categorie;
 use App\Models\FiltresAnnonces;
 use App\Models\Messagerie;
 use App\Services\ScoreRisque;
+use App\Services\ModeDemo;
 use App\Services\Upload;
 
 /** Petites annonces : liste publique, fiche, publication, gestion par l'auteur, favoris, signalement */
@@ -140,9 +141,10 @@ final class AnnonceController extends Controller
     public function ajouterPhoto(string $id): Response
     {
         $annonce = $this->annonceDeLAuteur($id);
-        $upload = new Upload(Config::get('dossier_public'));
+        $upload = new Upload(Config::get('dossier_public'), ModeDemo::tailleMaxPhoto());
         $chemin = null;
         try {
+            ModeDemo::verifierQuotaPhotos($this->db, Auth::utilisateur()['id'], Config::get('dossier_public'));
             $chemin = $upload->photo($this->request->fichier('photo'), 'annonces');
             (new Annonce($this->db))->ajouterPhoto($annonce['id'], Auth::utilisateur()['id'], $chemin);
             $this->db->valider();

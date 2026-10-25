@@ -5,11 +5,15 @@
 use App\Core\Auth;
 use App\Core\Csrf;
 use App\Core\View;
+use App\Services\ModeDemo;
 
 $moi = Auth::utilisateur();
 ?>
 <?= View::fragment('partials/menu_admin', ['actif' => '/admin/utilisateurs']) ?>
 <h1>Utilisateurs</h1>
+<?php if (ModeDemo::actif()): ?>
+    <p class="alerte alerte--info">Site de démonstration : les rôles et l'activation des comptes ne peuvent pas être modifiés.</p>
+<?php endif; ?>
 <form method="get" action="/admin/utilisateurs" class="form-quantite" role="search">
     <label for="q">Nom ou email</label>
     <input id="q" name="q" type="search" value="<?= e($recherche) ?>" maxlength="100">
