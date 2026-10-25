@@ -129,7 +129,7 @@ Plus de 1 000 vérifications automatiques, toutes vertes (site démarré) :
 | PL/SQL (300) | chaque procédure, cas normaux et cas d'erreur, avec un petit framework maison (`PKG_TEST`) |
 | PHP (96) | routeur, CSRF, validations, appel du moteur C++ (absent, trop lent, réponse invalide) |
 | HTTP (397) | parcours complets avec `curl` : rôles, CSRF, commandes, stock, annonces, console… |
-| Navigateur (34) | Playwright : JavaScript, accessibilité clavier, WebAssembly et son repli |
+| Navigateur (35) | Playwright : JavaScript, accessibilité clavier, WebAssembly et son repli, repli des photos |
 | Compatibilité Oracle 21c | `./database/verifier_21c.sh` installe tout sur un Oracle XE 21c temporaire et relance les tests |
 
 Les tests navigateur ne touchent pas aux captures d'écran de `docs/captures/` :
@@ -154,8 +154,21 @@ cpp/            common/ (partagé), engine/ (moteur), console/ (outil admin), wa
 docker/         images PHP et C++, script d'initialisation d'Oracle
 tests/          tests PHP, HTTP (bash) et navigateur (Playwright)
 docs/           architecture.md et captures d'écran
-tools/          générateurs (illustrations, CSV d'exemple)
+tools/          générateurs (photos de démo, illustrations, CSV d'exemple)
 ```
+
+### Photos de démonstration
+
+Les produits et annonces de démo utilisent des photos génériques de [Pixabay](https://pixabay.com)
+(auteurs et liens sur la page `/credits`), recadrées en 800 × 600 et hébergées dans `public/images/demo/`.
+Quand Pixabay n'avait pas de photo juste (sans marque ni logo), la vue garde son illustration SVG.
+Pour les retélécharger, il faut une clé Pixabay dans `.env` (`PIXABAY_API_KEY`) :
+
+```bash
+docker compose exec --user "$(id -u):$(id -g)" php php tools/photos_demo.php
+```
+
+Le choix est réglable à la main dans `tools/photos_choix.json` (photo imposée, illustration imposée, photos refusées).
 
 ## Limites assumées
 
