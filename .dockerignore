@@ -1,0 +1,23 @@
+# Contexte "code" de l'image de production (docker-compose.prod.yml) : la
+# racine du dépôt. Le Dockerfile ne copie que app/ et public/, mais tout ce qui
+# n'est pas exclu ici est quand même envoyé au moteur de construction.
+
+# Secrets : jamais dans une image
+.env
+.env.*
+!.env.example
+
+# Données locales : photos envoyées et emails simulés du poste de développement
+public/uploads/*
+!public/uploads/.gitkeep
+var/
+
+# Inutile à l'exécution
+.git/
+.claude/
+cpp/
+database/
+docs/
+tests/
+tools/
+*.bundle
