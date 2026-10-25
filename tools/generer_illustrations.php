@@ -2,6 +2,8 @@
 // =============================================================================
 // Génère les illustrations SVG des produits de démonstration, une par ligne de
 // PRODUIT_PHOTO (les chemins viennent de la base : une seule source de vérité).
+// Depuis l'arrivée des photos Pixabay, la base pointe vers /images/demo/*.webp :
+// l'illustration de même nom sert d'image de repli (App\Services\PhotosDemo).
 //
 //   docker compose exec --user "$(id -u):$(id -g)" php php tools/generer_illustrations.php
 // (--user : les fichiers appartiennent à votre utilisateur, pas à root)
@@ -12,6 +14,7 @@
 declare(strict_types=1);
 
 use App\Core\Database;
+use App\Services\PhotosDemo;
 
 $racine = dirname(__DIR__);
 require $racine . '/app/Core/Autoloader.php';
@@ -100,14 +103,12 @@ $photos = $db->lignes(
             (SELECT c.nom FROM categorie c WHERE c.id_parent IS NULL
               START WITH c.id = p.id_categorie CONNECT BY c.id = PRIOR c.id_parent) AS racine
        FROM produit_photo ph JOIN produit p ON p.id = ph.id_produit
-      WHERE ph.chemin LIKE '/assets/img/produits/%'
      UNION ALL
      -- Annonces : une illustration chacune, même principe
      SELECT ph.chemin, ph.ordre, a.titre, 1,
             (SELECT c.nom FROM categorie c WHERE c.id_parent IS NULL
               START WITH c.id = a.id_categorie CONNECT BY c.id = PRIOR c.id_parent)
        FROM annonce_photo ph JOIN annonce a ON a.id = ph.id_annonce
-      WHERE ph.chemin LIKE '/assets/img/annonces/%'
       ORDER BY 1",
 );
 
@@ -116,8 +117,10 @@ foreach (['produits', 'annonces'] as $sousDossier) {
         mkdir($racine . '/public/assets/img/' . $sousDossier, 0755, true);
     }
 }
+// Photos envoyées par les utilisateurs : pas d'illustration
+$photos = array_filter($photos, static fn (array $p) => PhotosDemo::cle($p['CHEMIN']) !== null);
 foreach ($photos as $photo) {
-    file_put_contents($racine . '/public' . $photo['CHEMIN'],
+    file_put_contents($racine . '/public' . PhotosDemo::illustration(PhotosDemo::cle($photo['CHEMIN'])),
         svg($photo['NOM'], (string) $photo['RACINE'], (int) $photo['ORDRE'], (int) $photo['NB_VUES']));
 }
 echo count($photos) . " illustration(s) générée(s) dans public/assets/img/produits/ et annonces/\n";

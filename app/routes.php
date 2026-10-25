@@ -8,6 +8,7 @@ use App\Core\Router;
 
 return static function (Router $router): void {
     $router->get('/', 'AccueilController@index');
+    $router->get('/credits', 'CreditsController@index');
 
     $router->get('/inscription', 'AuthController@formulaireInscription');
     $router->post('/inscription', 'AuthController@inscrire');

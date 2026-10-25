@@ -22,6 +22,7 @@ $flashs = Session::lireFlashs();
     <script type="module" src="/assets/js/validation.js"></script>
     <script type="module" src="/assets/js/recherche.js"></script>
     <script type="module" src="/assets/js/confirmation.js"></script>
+    <script type="module" src="/assets/js/photos-repli.js"></script>
 </head>
 <body>
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
@@ -96,6 +97,7 @@ $flashs = Session::lireFlashs();
 
 <footer class="pied">
     <p>Souk Atlas — projet de portfolio. Données de démonstration fictives, paiements simulés.</p>
+    <p>Photos : <a href="/credits">Pixabay</a></p>
 </footer>
 </body>
 </html>

@@ -42,6 +42,17 @@ RUN docker-php-ext-configure oci8 --with-oci8=instantclient,/opt/oracle/instantc
 # Version volontairement non figée : pour des fuseaux horaires, la plus récente est la bonne.
 RUN pecl install timezonedb && docker-php-ext-enable timezonedb
 
+# 2 ter. GD avec JPEG, PNG et WebP : tools/photos_demo.php recadre les photos
+#    Pixabay en 800 x 600 et les enregistre en WebP sur notre serveur.
+#    Les bibliothèques -dev servent à la compilation ; on garde les versions d'exécution.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libjpeg62-turbo-dev libpng-dev libwebp-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp \
+    && docker-php-ext-install gd \
+    && apt-get install -y --no-install-recommends libjpeg62-turbo libpng16-16 libwebp7 \
+    && apt-get purge -y libjpeg62-turbo-dev libpng-dev libwebp-dev && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
 # 3. Apache : seul le dossier public/ est exposé sur le web ;
 #    app/, database/, cpp/… restent inaccessibles depuis le navigateur.
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
