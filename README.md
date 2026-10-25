@@ -127,7 +127,7 @@ Plus de 1 000 vérifications automatiques, toutes vertes (site démarré) :
 |---|---|
 | C++ (CTest, 247 vérifications) | JSON, graphe, règles de risque, CSV, HTTP, console, Levenshtein, redimensionnement ; aussi sous AddressSanitizer (`./cpp/construire.sh --sanitizers`) |
 | PL/SQL (300) | chaque procédure, cas normaux et cas d'erreur, avec un petit framework maison (`PKG_TEST`) |
-| PHP (96) | routeur, CSRF, validations, appel du moteur C++ (absent, trop lent, réponse invalide) |
+| PHP (98) | routeur, CSRF, validations, appel du moteur C++ (absent, trop lent, réponse invalide) |
 | HTTP (397) | parcours complets avec `curl` : rôles, CSRF, commandes, stock, annonces, console… |
 | Navigateur (35) | Playwright : JavaScript, accessibilité clavier, WebAssembly et son repli, repli des photos |
 | Compatibilité Oracle 21c | `./database/verifier_21c.sh` installe tout sur un Oracle XE 21c temporaire et relance les tests |
@@ -144,6 +144,20 @@ conteneur fait tourner Oracle 23ai Free.
 
 ---
 
+## Mise en ligne
+
+Le site se déploie sur une VM **Oracle Cloud Always Free** (Ampere A1, ARM64) :
+Caddy en reverse proxy avec HTTPS automatique, Oracle sans aucun port publié,
+mode démonstration réinitialisé chaque nuit. Guide pas à pas, de la création de
+la VM aux sauvegardes : [**docs/deploiement.md**](docs/deploiement.md).
+
+```bash
+./deploy/verifier_arm64.sh    # sur le PC : l'image se construit et fonctionne en ARM64
+./deploy.sh                   # sur le serveur : premier déploiement et mises à jour
+```
+
+---
+
 ## Organisation du dépôt
 
 ```
@@ -152,8 +166,9 @@ public/         seule racine web : index.php, CSS, modules JavaScript, module We
 database/       schéma, packages PL/SQL, triggers, jobs, données de démo, tests, migrations
 cpp/            common/ (partagé), engine/ (moteur), console/ (outil admin), wasm/, tests/
 docker/         images PHP et C++, script d'initialisation d'Oracle
+deploy/         production : Caddyfile, réinitialisation de la démo, sauvegardes, vérification ARM64
 tests/          tests PHP, HTTP (bash) et navigateur (Playwright)
-docs/           architecture.md et captures d'écran
+docs/           architecture.md, deploiement.md et captures d'écran
 tools/          générateurs (photos de démo, illustrations, CSV d'exemple)
 ```
 
