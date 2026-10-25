@@ -1,0 +1,129 @@
+# Souk Atlas en PRODUCTION (VM Oracle Cloud Ampere A1, ARM64).
+# Guide complet : docs/deploiement.md ; lancement et mises à jour : ./deploy.sh
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Différences avec docker-compose.yml (développement) :
+#   - Oracle n'a AUCUN port publié et vit sur un réseau interne sans Internet ;
+#   - PHP n'a aucun port publié : seul Caddy (80, 443) est joignable, et c'est
+#     lui qui obtient et renouvelle le certificat HTTPS (Let's Encrypt) ;
+#   - le code est copié dans l'image (cible "production" du Dockerfile) ;
+#   - tous les services redémarrent seuls (panne, redémarrage de la VM).
+# Les valeurs viennent du fichier .env DU SERVEUR, créé par deploy.sh.
+
+# Nom de projet distinct : conteneurs et volumes "souk-atlas-prod-…" ne se
+# mélangent jamais avec ceux du développement ("souk-atlas-…")
+name: souk-atlas-prod
+
+# Journaux Docker limités à 3 × 10 Mo par service : sans limite, ils
+# finiraient par remplir le disque de la VM
+x-journaux: &journaux
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?ORACLE_PASSWORD manquant dans .env}
+      APP_USER: ${APP_USER:-SOUK}
+      APP_USER_PASSWORD: ${APP_USER_PASSWORD:?APP_USER_PASSWORD manquant dans .env}
+      TZ: Africa/Casablanca
+    # Pas de "ports:" : la base n'est joignable que par PHP, sur le réseau "base".
+    # (Un port publié par Docker contourne le pare-feu iptables de la VM :
+    #  ne rien publier est la seule protection fiable.)
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ./docker/oracle/init:/container-entrypoint-initdb.d:ro
+      - ./database:/opt/souk/database:ro
+    networks:
+      - base
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 120s
+    logging: *journaux
+
+  php:
+    build:
+      context: ./docker/php
+      target: production
+      additional_contexts:
+        cpp: ./cpp
+        # Racine du dépôt, filtrée par .dockerignore (pas de .env, pas de .git)
+        code: .
+    image: souk-atlas-prod-php
+    restart: unless-stopped
+    environment:
+      DB_USER: ${APP_USER:-SOUK}
+      DB_PASSWORD: ${APP_USER_PASSWORD}
+      DB_DSN: //oracle:1521/FREEPDB1
+      # Écrits ici, pas dans .env : impossible de les oublier en production
+      APP_ENV: prod
+      SESSION_COOKIE_SECURE: "1"
+      APP_URL: https://${DOMAINE:?DOMAINE manquant dans .env}
+      SESSION_INACTIVITE_SECONDES: 1800
+      # 1 = site de démonstration public (bandeau, admin bridé, envois limités)
+      DEMO_MODE: ${DEMO_MODE:-1}
+      # Seule adresse à qui Apache fait confiance pour X-Forwarded-For
+      # (doit correspondre au sous-réseau "web" ci-dessous, voir apache-prod.conf)
+      RESEAU_PROXY: 172.30.80.0/24
+    volumes:
+      # Photos envoyées et emails simulés : hors de l'image, ils survivent
+      # à une mise à jour (nouvelle image) et sont sauvegardés à part
+      - uploads:/var/www/html/public/uploads
+      - donnees:/var/www/html/var
+    networks:
+      - web
+      - base
+    depends_on:
+      oracle:
+        condition: service_healthy
+    logging: *journaux
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    ports:
+      # Variables seulement pour un essai local (ports 80/443 souvent pris) ;
+      # sur le serveur, laisser les valeurs par défaut
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      # HTTP/3 (QUIC) passe par UDP sur le même port 443
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      DOMAINE: ${DOMAINE}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL manquant dans .env}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificats et clés : à conserver, sinon Caddy redemande un certificat
+      # à chaque redémarrage et atteint vite les limites de Let's Encrypt
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - web
+    depends_on:
+      - php
+    logging: *journaux
+
+networks:
+  # Caddy ↔ PHP. Sous-réseau fixé pour que Apache sache qui est Caddy.
+  web:
+    ipam:
+      config:
+        - subnet: 172.30.80.0/24
+  # PHP ↔ Oracle. "internal" : aucune sortie vers Internet, aucune entrée.
+  base:
+    internal: true
+
+volumes:
+  oracle-data:
+  uploads:
+  donnees:
+  caddy-data:
+  caddy-config:

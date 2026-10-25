@@ -1,0 +1,34 @@
+# Caddy : reverse proxy devant Apache/PHP (docker-compose.prod.yml).
+#
+# Rien à faire pour HTTPS : dès que le nom de domaine pointe vers la VM, Caddy
+# obtient un certificat Let's Encrypt, le renouvelle avant expiration, et
+# redirige tout le trafic http:// vers https://.
+
+{
+	# Adresse prévenue par Let's Encrypt en cas de problème de certificat
+	email {$ACME_EMAIL}
+}
+
+{$DOMAINE} {
+	header {
+		# HSTS : pendant un an, le navigateur refuse de revenir sur ce site en
+		# http://, même si on tape l'adresse sans https (pas d'attaque par
+		# "rétrogradation" sur un Wi-Fi public). Ni includeSubDomains ni preload :
+		# ils engageraient tous les sous-domaines, et pour longtemps.
+		Strict-Transport-Security "max-age=31536000"
+		# Ne pas annoncer le logiciel du serveur
+		-Server
+	}
+
+	# Compression des pages, CSS et JS (pas des photos, déjà compressées)
+	encode zstd gzip
+
+	# Une requête plus grosse est refusée avant même d'atteindre PHP
+	request_body {
+		max_size 10MB
+	}
+
+	# "php" = nom du service Docker. Caddy ajoute X-Forwarded-For avec l'IP
+	# réelle du visiteur, et écrase celui qu'un visiteur aurait envoyé lui-même.
+	reverse_proxy php:80
+}
