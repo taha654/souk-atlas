@@ -189,13 +189,26 @@ UPDATE produit SET prix_ht = 2190 WHERE id = 2;
 UPDATE produit SET prix_ht = 5790 WHERE id = 15;
 UPDATE historique_prix SET date_changement = SYSDATE - 20 WHERE id_produit = 2 AND nouveau_prix_ht = 2490;
 
--- Photos : 1 à 3 illustrations SVG par produit. Les fichiers sont générés à
--- partir de ces lignes par tools/generer_illustrations.php (public/assets/img/produits/).
+-- Photos : 1 à 3 par produit, de vraies photos Pixabay (public/images/demo/,
+-- téléchargées par tools/photos_demo.php, crédits dans credits.json).
+-- Chacune a une illustration SVG de même nom dans public/assets/img/produits/
+-- (tools/generer_illustrations.php), affichée si la photo manque.
+-- Les vues de la liste gardent leur illustration : Pixabay n'avait pas de photo
+-- juste (sans marque ni logo). Même liste que database/migrations/2026-10-27_photos_demo.sql.
 INSERT INTO produit_photo (id_produit, chemin, ordre)
-SELECT p.id, '/assets/img/produits/produit-' || p.id || '-' || v.n || '.svg', v.n
-  FROM produit p
- CROSS JOIN (SELECT LEVEL AS n FROM dual CONNECT BY LEVEL <= 3) v
- WHERE v.n <= MOD(p.id, 3) + 1;
+SELECT id, CASE WHEN vue IN (
+           'produit-1-1', 'produit-1-2', 'produit-2-1', 'produit-4-1', 'produit-4-2', 'produit-10-1',
+           'produit-10-2', 'produit-11-1', 'produit-11-2', 'produit-11-3', 'produit-13-1', 'produit-13-2',
+           'produit-14-2', 'produit-20-2', 'produit-22-2', 'produit-25-2', 'produit-27-1', 'produit-28-1',
+           'produit-28-2', 'produit-31-2', 'produit-37-1', 'produit-37-2', 'produit-38-1', 'produit-38-2',
+           'produit-38-3', 'produit-39-1', 'produit-43-1', 'produit-44-3', 'produit-46-1', 'produit-46-2',
+           'produit-47-3', 'produit-54-1')
+       THEN '/assets/img/produits/' || vue || '.svg'
+       ELSE '/images/demo/' || vue || '.webp' END, n
+  FROM (SELECT p.id, v.n, 'produit-' || p.id || '-' || v.n AS vue
+          FROM produit p
+         CROSS JOIN (SELECT LEVEL AS n FROM dual CONNECT BY LEVEL <= 3) v
+         WHERE v.n <= MOD(p.id, 3) + 1);
 
 -- -----------------------------------------------------------------------------
 -- Promotions
@@ -455,9 +468,12 @@ SELECT id, id_utilisateur, id_categorie, titre, description, prix, ville, statut
     SELECT 40, 11, 31, 'Scooter électrique', 'Autonomie 40 km, chargeur fourni.', 4500, 'Casablanca', 'EXPIREE', 7, NULL, 45 FROM dual
   );
 
--- Une illustration par annonce (fichiers générés par tools/generer_illustrations.php)
+-- Une photo par annonce (même principe que les produits ; repli SVG dans public/assets/img/annonces/)
 INSERT INTO annonce_photo (id_annonce, chemin, ordre)
-SELECT id, '/assets/img/annonces/annonce-' || id || '.svg', 1 FROM annonce;
+SELECT id, CASE WHEN id IN (3, 4, 16, 25, 31, 32, 36, 38)
+               THEN '/assets/img/annonces/annonce-' || id || '.svg'
+               ELSE '/images/demo/annonce-' || id || '.webp' END, 1
+  FROM annonce;
 
 -- -----------------------------------------------------------------------------
 -- Favoris, messagerie

@@ -177,20 +177,32 @@ test.describe('Autocomplétion', () => {
 
 test.describe('Fiche produit', () => {
     test('la galerie change de photo au clic et aux flèches', async ({ page }) => {
-        await page.goto('/produit/2');   // produit 2 : 3 illustrations
+        await page.goto('/produit/2');   // produit 2 : une illustration SVG puis deux photos WebP
         const image = page.locator('[data-galerie-image]');
         const vignettes = page.locator('.galerie__vignette');
         await expect(vignettes).toHaveCount(3);
 
         await vignettes.nth(1).click();
-        await expect(image).toHaveAttribute('src', /produit-2-2\.svg$/);
+        await expect(image).toHaveAttribute('src', /\/images\/demo\/produit-2-2\.webp$/);
         await expect(vignettes.nth(1)).toHaveAttribute('aria-pressed', 'true');
 
         await vignettes.nth(1).press('ArrowRight');
-        await expect(image).toHaveAttribute('src', /produit-2-3\.svg$/);
+        await expect(image).toHaveAttribute('src', /\/images\/demo\/produit-2-3\.webp$/);
         await expect(vignettes.nth(2)).toBeFocused();
         await vignettes.nth(2).press('ArrowRight');   // dernière → première
-        await expect(image).toHaveAttribute('src', /produit-2-1\.svg$/);
+        await expect(image).toHaveAttribute('src', /\/assets\/img\/produits\/produit-2-1\.svg$/);
+    });
+
+    test('une photo qui ne se charge pas est remplacée par son illustration SVG', async ({ page }) => {
+        // photos-repli.js : la photo WebP en échec cède la place au SVG de même nom
+        await page.route('**/images/demo/produit-2-2.webp', (route) => route.abort());
+        await page.goto('/produit/2');
+        await page.locator('.galerie__vignette').nth(1).click();
+        await expect(page.locator('[data-galerie-image]'))
+            .toHaveAttribute('src', /\/assets\/img\/produits\/produit-2-2\.svg$/);
+        // L'échec de chargement provoqué ci-dessus est attendu : seule erreur tolérée
+        const erreurs = test.info().erreursConsole;
+        erreurs.splice(0, erreurs.length, ...erreurs.filter((m) => !m.startsWith('Failed to load resource')));
     });
 
     test('prix TTC, prix barré et promotion affichés', async ({ page }) => {
